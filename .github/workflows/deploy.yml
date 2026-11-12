@@ -1,0 +1,57 @@
+name: test-and-deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  SERVICE: elder-activity-agent
+  REGION: us-central1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      # --locked fails the build if uv.lock is out of date with pyproject.toml
+      - run: uv sync --locked
+      - run: uv run pytest -q
+
+  deploy:
+    needs: test
+    # Only deploy from main, never from pull requests.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # lets GitHub prove its identity to Google (no stored keys)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --source . \
+            --region "$REGION" \
+            --project "${{ secrets.GCP_PROJECT_ID }}" \
+            --allow-unauthenticated \
+            --set-secrets GEMINI_API_KEY=gemini-api-key:latest,APP_API_KEY=app-api-key:latest \
+            --max-instances 1 \
+            --quiet
+
+      - name: Smoke test
+        run: |
+          URL=$(gcloud run services describe "$SERVICE" --region "$REGION" \
+            --project "${{ secrets.GCP_PROJECT_ID }}" --format='value(status.url)')
+          curl --fail --silent "$URL/health"
