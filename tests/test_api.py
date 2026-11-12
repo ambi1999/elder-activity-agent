@@ -11,8 +11,9 @@ def fake_agent(message: str) -> dict:
 
 
 def test_health():
-    assert client.get("/health").json() == {"status": "ok"}
-
+    body = client.get("/health").json()
+    assert body["status"] == "ok"
+    assert "commit" in body
 
 def test_chat(monkeypatch):
     monkeypatch.setattr(agent, "run_agent", fake_agent)

@@ -25,8 +25,8 @@ class ChatResponse(BaseModel):
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
-
+    # Render sets RENDER_GIT_COMMIT to the deployed commit; "dev" when running locally.
+    return {"status": "ok", "commit": os.getenv("RENDER_GIT_COMMIT", "dev")}
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest, x_api_key: str | None = Header(default=None)) -> dict:
