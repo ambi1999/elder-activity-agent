@@ -50,13 +50,10 @@ def sample_batch() -> dict:
         ],
     }
 
-
-def test_ingest_accepts_valid_token(monkeypatch):
+def test_ingest_ignores_token_in_url(monkeypatch):
     monkeypatch.setenv("INGEST_TOKEN", "tok")
-    response = client.post("/ingest?token=tok", json=sample_batch())
-    assert response.status_code == 200
-    assert response.json()["received"] == 2
-
+    # Even the correct token is refused when sent in the URL.
+    assert client.post("/ingest?token=tok", json=sample_batch()).status_code == 401
 
 def test_ingest_rejects_bad_or_missing_token(monkeypatch):
     monkeypatch.setenv("INGEST_TOKEN", "tok")

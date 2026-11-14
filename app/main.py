@@ -4,7 +4,7 @@ import logging
 import os
 from collections import Counter
 
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from app import agent
@@ -56,15 +56,9 @@ def chat(request: ChatRequest, x_api_key: str | None = Header(default=None)) -> 
         raise HTTPException(status_code=502, detail="The AI model is unavailable right now. Try again shortly.")
 
 @app.post("/ingest")
-def ingest(
-    batch: SensorBatch,
-    authorization: str | None = Header(default=None),
-    token: str = Query(default=""),
-) -> dict:
-    # Prefer the Authorization header (keeps the token out of URLs and logs).
-    # The ?token= query parameter is a temporary fallback during the switch-over.
-    header_token = (authorization or "").removeprefix("Bearer ").strip()
-    supplied = header_token or token
+def ingest(batch: SensorBatch, authorization: str | None = Header(default=None)) -> dict:
+    # The token must come in the Authorization header; tokens in URLs leak into logs.
+    supplied = (authorization or "").removeprefix("Bearer ").strip()
 
     # Fail closed: if no token is configured on the server, reject everything.
     expected = os.getenv("INGEST_TOKEN")
@@ -73,8 +67,7 @@ def ingest(
 
     counts = Counter(reading.get("name", "unknown") for reading in batch.payload)
     log.info(
-        "ingest auth=%s device=%s session=%s message=%s readings=%s",
-        "header" if header_token else "query",
+        "ingest device=%s session=%s message=%s readings=%s",
         batch.deviceId[:8], batch.sessionId[:8], batch.messageId, dict(counts),
     )
 
