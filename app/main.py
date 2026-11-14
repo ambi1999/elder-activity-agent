@@ -55,17 +55,26 @@ def chat(request: ChatRequest, x_api_key: str | None = Header(default=None)) -> 
         log.exception("Agent failed")
         raise HTTPException(status_code=502, detail="The AI model is unavailable right now. Try again shortly.")
 
-
 @app.post("/ingest")
-def ingest(batch: SensorBatch, token: str = Query(default="")) -> dict:
+def ingest(
+    batch: SensorBatch,
+    authorization: str | None = Header(default=None),
+    token: str = Query(default=""),
+) -> dict:
+    # Prefer the Authorization header (keeps the token out of URLs and logs).
+    # The ?token= query parameter is a temporary fallback during the switch-over.
+    header_token = (authorization or "").removeprefix("Bearer ").strip()
+    supplied = header_token or token
+
     # Fail closed: if no token is configured on the server, reject everything.
     expected = os.getenv("INGEST_TOKEN")
-    if not expected or not _matches(token, expected):
+    if not expected or not _matches(supplied, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing token")
 
     counts = Counter(reading.get("name", "unknown") for reading in batch.payload)
     log.info(
-        "ingest device=%s session=%s message=%s readings=%s",
+        "ingest auth=%s device=%s session=%s message=%s readings=%s",
+        "header" if header_token else "query",
         batch.deviceId[:8], batch.sessionId[:8], batch.messageId, dict(counts),
     )
 
@@ -78,3 +87,4 @@ def ingest(batch: SensorBatch, token: str = Query(default="")) -> dict:
             log.info("sample %s", reading)
 
     return {"status": "ok", "received": len(batch.payload)}
+

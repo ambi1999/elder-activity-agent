@@ -67,3 +67,20 @@ def test_ingest_rejects_bad_or_missing_token(monkeypatch):
 def test_ingest_fails_closed_without_config(monkeypatch):
     monkeypatch.delenv("INGEST_TOKEN", raising=False)
     assert client.post("/ingest?token=anything", json=sample_batch()).status_code == 401
+
+def test_ingest_accepts_token_in_header(monkeypatch):
+    monkeypatch.setenv("INGEST_TOKEN", "tok")
+    response = client.post("/ingest", json=sample_batch(), headers={"Authorization": "tok"})
+    assert response.status_code == 200
+
+
+def test_ingest_accepts_bearer_header(monkeypatch):
+    monkeypatch.setenv("INGEST_TOKEN", "tok")
+    response = client.post("/ingest", json=sample_batch(), headers={"Authorization": "Bearer tok"})
+    assert response.status_code == 200
+
+
+def test_ingest_rejects_wrong_header(monkeypatch):
+    monkeypatch.setenv("INGEST_TOKEN", "tok")
+    response = client.post("/ingest", json=sample_batch(), headers={"Authorization": "Bearer nope"})
+    assert response.status_code == 401
