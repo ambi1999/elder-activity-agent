@@ -30,7 +30,7 @@ jobs:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/elder_test
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       # --locked fails the build if uv.lock is out of date with pyproject.toml
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - name: Check dependencies for known vulnerabilities
         run: |
           uv export --locked --format requirements-txt --no-emit-project --output-file /tmp/requirements.txt
