@@ -16,11 +16,14 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY app ./app
+COPY alembic.ini ./
+COPY migrations ./migrations
 ENV PATH="/srv/.venv/bin:$PATH"
 
 # Don't run as root inside the container.
 RUN useradd --create-home appuser
 USER appuser
 
-# Cloud Run tells the app which port to use via $PORT.
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}
+# Apply database migrations, then start the app. If a migration fails, the app never
+# starts, the health check fails, and Render keeps the previous version running (ADR 0015).
+CMD alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}

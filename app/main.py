@@ -6,13 +6,14 @@ from collections import Counter
 
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 
-from app import agent
+from app import agent, db
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger(__name__)
 
-app = FastAPI(title="Elder Activity Agent", version="0.2.0")
+app = FastAPI(title="Elder Activity Agent", version="0.3.0")
 
 
 class ChatRequest(BaseModel):
@@ -37,23 +38,42 @@ def _matches(given: str | None, expected: str) -> bool:
     return hmac.compare_digest((given or "").encode(), expected.encode())
 
 
+def _require_api_key(x_api_key: str | None) -> None:
+    expected = os.getenv("APP_API_KEY")
+    if expected and not _matches(x_api_key, expected):
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+
 @app.get("/health")
 def health() -> dict:
-    # Render sets RENDER_GIT_COMMIT to the deployed commit; "dev" when running locally.
+    # Deliberately does NOT touch the database: Render calls this every few seconds,
+    # and querying Neon each time would stop it from ever sleeping (ADR 0016).
     return {"status": "ok", "commit": os.getenv("RENDER_GIT_COMMIT", "dev")}
+
+
+@app.get("/health/db")
+def health_db(x_api_key: str | None = Header(default=None)) -> dict:
+    # Protected, so strangers can't keep the database awake by calling it.
+    _require_api_key(x_api_key)
+    try:
+        with db.get_engine().connect() as conn:
+            revision = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+    except Exception:
+        log.exception("Database check failed")
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    return {"database": "ok", "schema_revision": revision}
 
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest, x_api_key: str | None = Header(default=None)) -> dict:
     # The URL is public, so require a key; otherwise anyone could use up your Gemini quota.
-    expected = os.getenv("APP_API_KEY")
-    if expected and not _matches(x_api_key, expected):
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    _require_api_key(x_api_key)
     try:
         return agent.run_agent(request.message)
     except Exception:
         log.exception("Agent failed")
         raise HTTPException(status_code=502, detail="The AI model is unavailable right now. Try again shortly.")
+
 
 @app.post("/ingest")
 def ingest(batch: SensorBatch, authorization: str | None = Header(default=None)) -> dict:
@@ -72,6 +92,7 @@ def ingest(batch: SensorBatch, authorization: str | None = Header(default=None))
     )
 
     # TEMPORARY: log one example reading per sensor so we can see the real format.
+    # Replaced by saving to the database in Stage B.
     seen = set()
     for reading in batch.payload:
         name = reading.get("name")
@@ -80,4 +101,3 @@ def ingest(batch: SensorBatch, authorization: str | None = Header(default=None))
             log.info("sample %s", reading)
 
     return {"status": "ok", "received": len(batch.payload)}
-
