@@ -2,18 +2,22 @@
 import hmac
 import logging
 import os
-from collections import Counter
+from dataclasses import asdict
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
-from app import agent, db
+from app import agent, db, devices, sensor_logger, storage
+from app.limits import MaxBodySizeMiddleware
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger(__name__)
 
-app = FastAPI(title="Elder Activity Agent", version="0.3.0")
+app = FastAPI(title="Elder Activity Agent", version="0.4.0")
+app.add_middleware(MaxBodySizeMiddleware)
 
 
 class ChatRequest(BaseModel):
@@ -23,14 +27,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     tool_calls: list[dict]
-
-
-class SensorBatch(BaseModel):
-    """One message from Sensor Logger's HTTP push."""
-    messageId: int
-    sessionId: str
-    deviceId: str
-    payload: list[dict] = Field(default_factory=list)
 
 
 def _matches(given: str | None, expected: str) -> bool:
@@ -76,28 +72,31 @@ def chat(request: ChatRequest, x_api_key: str | None = Header(default=None)) -> 
 
 
 @app.post("/ingest")
-def ingest(batch: SensorBatch, authorization: str | None = Header(default=None)) -> dict:
-    # The token must come in the Authorization header; tokens in URLs leak into logs.
-    supplied = (authorization or "").removeprefix("Bearer ").strip()
-
-    # Fail closed: if no token is configured on the server, reject everything.
-    expected = os.getenv("INGEST_TOKEN")
-    if not expected or not _matches(supplied, expected):
+def ingest(
+    batch: sensor_logger.SensorLoggerBatch,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    # Each phone has its own token, sent in the Authorization header (ADR 0011).
+    token = (authorization or "").removeprefix("Bearer ").strip()
+    if not token:
         raise HTTPException(status_code=401, detail="Invalid or missing token")
 
-    counts = Counter(reading.get("name", "unknown") for reading in batch.payload)
+    try:
+        engine = db.get_engine()
+        with engine.connect() as conn:
+            device = devices.find_device(conn, token)
+        if device is None:
+            raise HTTPException(status_code=401, detail="Invalid or missing token")
+        result = storage.save_batch(engine, device.id, sensor_logger.to_batch(batch), now=datetime.now(UTC))
+    except SQLAlchemyError:
+        # Nothing was saved (the transaction rolled back); the phone can safely retry.
+        log.exception("Saving batch failed")
+        raise HTTPException(status_code=503, detail="Storage unavailable, please retry")
+
+    # One line per batch: counts only, never sensor values or tokens.
     log.info(
-        "ingest device=%s session=%s message=%s readings=%s",
-        batch.deviceId[:8], batch.sessionId[:8], batch.messageId, dict(counts),
+        "ingest device=%s session=%s batch=%s status=%s stored=%s ignored=%s dropped=%s",
+        str(device.id)[:8], batch.sessionId[:8], batch.messageId,
+        result.status, result.stored, result.ignored, result.dropped,
     )
-
-    # TEMPORARY: log one example reading per sensor so we can see the real format.
-    # Replaced by saving to the database in Stage B.
-    seen = set()
-    for reading in batch.payload:
-        name = reading.get("name")
-        if name not in seen:
-            seen.add(name)
-            log.info("sample %s", reading)
-
-    return {"status": "ok", "received": len(batch.payload)}
+    return asdict(result)

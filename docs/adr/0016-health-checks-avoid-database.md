@@ -1,6 +1,6 @@
 # 0016. Keep `/health` independent of the database
 
-- **Status:** Accepted (to be implemented in Phase 1, Stage A)
+- **Status:** Accepted (implemented)
 - **Date:** 2026-11-16
 
 ## Context

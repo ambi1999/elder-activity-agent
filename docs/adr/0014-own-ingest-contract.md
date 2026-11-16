@@ -1,6 +1,6 @@
 # 0014. Define our own versioned ingest contract, with an adapter per data source
 
-- **Status:** Accepted (to be implemented in Phase 1, Stages B and C)
+- **Status:** Accepted (Sensor Logger adapter implemented; `v1` endpoint in Stage C)
 - **Date:** 2026-11-16
 
 ## Context

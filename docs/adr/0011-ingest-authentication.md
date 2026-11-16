@@ -1,6 +1,6 @@
 # 0011. Authenticate devices with tokens in the Authorization header, fail closed, and move to per-device hashed tokens
 
-- **Status:** Accepted (header token implemented; per-device tokens planned)
+- **Status:** Accepted (implemented; a pairing flow for the native app is planned)
 - **Date:** 2026-11-16
 
 ## Context

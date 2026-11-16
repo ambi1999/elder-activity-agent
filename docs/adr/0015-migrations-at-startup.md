@@ -1,6 +1,6 @@
 # 0015. Run Alembic migrations when the app starts, and move them into the pipeline later
 
-- **Status:** Accepted (to be implemented in Phase 1, Stage A)
+- **Status:** Accepted (migrations at startup implemented; pipeline step planned)
 - **Date:** 2026-11-16
 
 ## Context
