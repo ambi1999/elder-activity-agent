@@ -22,6 +22,9 @@ jobs:
     # Only deploy from main, never from pull requests.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://elder-activity-agent.onrender.com/docs
     steps:
       - name: Trigger Render deploy
         run: curl --fail --silent --show-error -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
