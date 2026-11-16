@@ -1,0 +1,21 @@
+# Weekly update pull requests for dependencies, GitHub Actions and Docker images (ADR 0021).
+# Each pull request runs the full CI pipeline before it can be merged.
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      python-dependencies:
+        patterns: ["*"]          # one pull request for all Python updates, to reduce noise
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"

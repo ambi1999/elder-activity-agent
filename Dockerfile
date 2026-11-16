@@ -1,8 +1,9 @@
 FROM python:3.12-slim
 
 # uv binary from Astral's official image.
-# For fully reproducible builds, replace "latest" with the version from `uv --version`.
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+# uv binary from Astral's official image, pinned to an exact version (ADR 0021).
+COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /bin/uv
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \

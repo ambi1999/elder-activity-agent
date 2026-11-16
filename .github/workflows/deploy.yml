@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read   # least privilege for the workflow token
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -34,8 +37,19 @@ jobs:
       - run: uv sync --locked
       - run: uv run pytest -q -rs
 
+  audit:
+    # Known vulnerabilities in locked dependencies block the deploy (ADR 0021).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Check dependencies for known vulnerabilities
+        run: |
+          uv export --locked --format requirements-txt --no-emit-project --output-file /tmp/requirements.txt
+          uvx pip-audit --requirement /tmp/requirements.txt --disable-pip
+
   deploy:
-    needs: test
+    needs: [test, audit]
     # Only deploy from main, never from pull requests.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest

@@ -1,20 +1,14 @@
 # Elder Activity Agent
 
-An AI agent that watches phone sensor data (movement, light, charging) for signs that an older person has had a normal, active day, and sends a daily summary plus urgent alerts to family. No wearable needed: it uses the phone they already own.
+An AI agent that watches phone sensor data (movement, light, charging) for signs that an older person has had a normal, active day, and will send a daily summary plus alerts to family. No wearable needed: it uses the phone they already own.
 
-**Status:** Phase 0 complete. A tool-using AI agent is live in the cloud, deployed automatically by a CI/CD pipeline after tests pass.
+> **Not a medical device or emergency service.** It reports activity patterns and can miss events, for example when the phone is left behind ([ADR 0002](docs/adr/0002-wellness-not-medical-device.md)).
 
-## Architecture
+**Status:** Phase 1 in progress. Phones stream data to the cloud, where it is authenticated per device and stored as per-minute summaries in Postgres.
 
-```mermaid
-flowchart LR
-    Dev[Developer push] --> GH[GitHub Actions]
-    GH -->|1. uv sync --locked + pytest| GH
-    GH -->|2. deploy hook| R[Render: Docker container]
-    GH -->|3. poll /health until commit matches| R
-    U[Client] -->|POST /chat + X-API-Key| R
-    R -->|tool-calling loop| G[Gemini API]
-```
+- [Architecture](docs/architecture.md) (C4 diagrams of the system today)
+- [Architecture Decision Records](docs/adr/README.md) (why it's built this way)
+- [Threat model](docs/security/threat-model.md) and [security policy](SECURITY.md)
 
 ## Stack
 
@@ -22,103 +16,75 @@ flowchart LR
 |---|---|
 | Language / packaging | Python 3.12, uv (lockfile for reproducible installs) |
 | API | FastAPI |
-| LLM | Google Gemini (Flash model, free tier) via `google-genai` |
-| Container | Docker (uv-based image, non-root user, no dev dependencies) |
+| Database | Neon serverless Postgres, SQLAlchemy, Alembic migrations |
+| LLM | Google Gemini Flash via `google-genai` |
+| Data collection | Sensor Logger (Android) for now; own Kotlin app planned |
+| Container | Docker (uv-based image, non-root user, migrations on start-up) |
 | Hosting | Render free web service |
-| CI/CD | GitHub Actions: test, deploy, verify |
-| Secrets | `.env` locally (git-ignored); Render environment variables in production |
-
-## How the agent works
-
-`app/agent.py` runs the core agent loop explicitly (automatic function calling is switched off so the loop is visible):
-
-1. Send the user's message and the tool definitions to Gemini.
-2. If Gemini requests tools, run them locally and send back the results.
-3. Repeat until Gemini returns a final answer, capped at 5 steps.
-
-Tools live in `app/tools.py`. Each is a plain Python function; the SDK builds the tool definition from its type hints and docstring.
-
-| Tool | Purpose |
-|---|---|
-| `get_current_time(timezone)` | Current date and time in any IANA timezone |
-| `calculate(expression)` | Safe arithmetic, parsed with `ast` rather than `eval()` |
-| `days_until(target_date)` | Days from today to a YYYY-MM-DD date |
-
-The agent can call tools in parallel (independent questions) or chain them (e.g. fetch the current year, then count days to Christmas).
-
-## Run locally
-
-Install [uv](https://docs.astral.sh/uv/), then:
-
-```bash
-uv sync                                   # installs Python 3.12 if needed, creates .venv
-cp .env.example .env                      # Windows: copy .env.example .env
-# edit .env with your real values
-
-uv run pytest                             # no API key needed: Gemini is mocked in tests
-uv run --env-file .env python -m app.agent "How many days until Christmas this year?"
-uv run --env-file .env uvicorn app.main:app --reload   # then open http://localhost:8000/docs
-```
-
-Environment variables:
-
-| Variable | Purpose |
-|---|---|
-| `GEMINI_API_KEY` | Key from Google AI Studio |
-| `GEMINI_MODEL` | Gemini model name (defaults to the Flash model in `agent.py`) |
-| `APP_API_KEY` | Password required on `/chat` via the `X-API-Key` header |
-
-Add dependencies with `uv add <package>` (or `uv add --dev <package>`), and always commit `uv.lock`.
+| CI/CD | GitHub Actions: tests against a Postgres container, dependency audit, gated deploys |
+| Security tooling | Dependabot, CodeQL, pip-audit, GitHub secret scanning |
 
 ## API
 
-| Endpoint | Description |
-|---|---|
-| `GET /health` | Returns `{"status": "ok", "commit": "<deployed git SHA>"}` |
-| `POST /chat` | Body `{"message": "..."}`, header `X-API-Key`. Returns the answer plus a trace of tool calls |
-| `GET /docs` | Interactive API docs |
+| Endpoint | Auth | Description |
+|---|---|---|
+| `POST /ingest` | Device token (`Authorization` header) | Receives a batch from a phone; returns `status` (`ok` or `duplicate`) and counts of readings `stored`, `ignored` and `dropped` |
+| `POST /chat` | `X-API-Key` | Tool-using agent; returns the answer and a trace of tool calls |
+| `GET /health` | none | App status and deployed commit (never touches the database) |
+| `GET /health/db` | `X-API-Key` | Database connectivity and schema revision |
+| `GET /docs` | none | Interactive API documentation |
 
-Example:
+## Run locally
+
+Install [uv](https://docs.astral.sh/uv/) and Docker, then:
 
 ```bash
-curl -X POST https://<your-service>.onrender.com/chat \
-  -H "Content-Type: application/json" -H "X-API-Key: <APP_API_KEY>" \
-  -d '{"message": "What is 17 times 23, and what time is it in Tokyo?"}'
+uv sync
+cp .env.example .env              # Windows: copy .env.example .env, then fill in real values
+
+docker compose up -d              # throwaway Postgres for tests, on port 5433
+uv run --env-file .env pytest -rs # all tests, including database tests
+uv run pytest -rs                 # without a database: database tests are skipped
+
+uv run --env-file .env uvicorn app.main:app --reload   # http://localhost:8000/docs
 ```
 
-The free Render service sleeps after 15 minutes idle, so the first request after a quiet period can take up to a minute.
+Tests never touch the production database: they use `TEST_DATABASE_URL` and refuse to run against Neon.
 
-## CI/CD pipeline
+| Variable | Purpose |
+|---|---|
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Gemini access and model name |
+| `APP_API_KEY` | Required on `/chat` and `/health/db` |
+| `DATABASE_URL` | Neon connection string (direct, not pooled) |
+| `TEST_DATABASE_URL` | Local Docker database for tests |
+| `DEVICE_TOKEN` | Optional; a phone's token, for `scripts/check_token.py` |
 
-Defined in `.github/workflows/deploy.yml`:
+## Managing phones
 
-1. **Test** (every push and pull request): `uv sync --locked` fails if `uv.lock` is out of date, then `pytest` runs.
-2. **Deploy** (pushes to `main` only, after tests pass): triggers Render through a secret deploy hook. Render's own auto-deploy is turned off, so untested code can never go live.
-3. **Verify:** polls `/health` until it reports the exact commit that was pushed, so the pipeline confirms the *new* version is live, not just that the old one still responds.
+```bash
+uv run --env-file .env python scripts/register_device.py add --name "Test phone" --timezone Australia/Brisbane
+uv run --env-file .env python scripts/register_device.py list
+uv run --env-file .env python scripts/register_device.py revoke DEVICE_ID
+```
 
-GitHub repository secrets: `RENDER_DEPLOY_HOOK_URL`, `RENDER_SERVICE_URL`.
+`add` prints the device's token once; only a SHA-256 hash is stored. Put the token in the phone app's `Authorization` header.
 
-### Deploy your own copy
+## Delivery pipeline
 
-1. Sign up at render.com with GitHub (no card needed) and create a **Web Service** from this repo, runtime **Docker**, instance type **Free**.
-2. Add the environment variables above; set **Health Check Path** to `/health` and **Auto-Deploy** to off.
-3. Copy the **Deploy Hook** URL from the service settings.
-4. Add the two GitHub secrets above, then push to `main`.
-
-## Design notes
-
-- **Resilience:** Gemini calls have a timeout and limited retries, so a slow or failing model returns a clear error instead of hanging. The API returns a 502 rather than crashing. Later phases add a rule-based fallback so safety alerts never depend on the LLM being available.
-- **Security:** no secrets in the repo; `/chat` requires an API key, compared in constant time; the container runs as a non-root user; the calculator can't execute code.
-- **Reproducibility:** one lockfile drives local development, CI and the Docker image.
-- **Swappable model:** the model name is configuration, so it can change without a code change.
-- **Privacy (later phases):** on Gemini's free tier, prompts may be used by Google to improve its products, so only anonymised activity summaries will ever be sent, never raw sensor data, names or locations.
+1. Every change goes through a pull request; `main` is protected.
+2. **test** runs pytest against a Postgres service container; **audit** runs `pip-audit` on the locked dependencies.
+3. On `main`, after both pass, GitHub Actions triggers Render's deploy hook (Render auto-deploy is off).
+4. The container runs `alembic upgrade head`, then starts the app. A failed migration means the new version never goes live.
+5. The pipeline polls `/health` until it reports the exact commit that was pushed.
 
 ## Roadmap
 
-- [x] **Phase 0:** tool-using agent, tests, Docker, CI/CD to Render
-- [ ] **Phase 1:** Android phone sends sensor data to an `/ingest` endpoint; stored in Postgres
-- [ ] **Phase 2:** hourly activity features and charts
-- [ ] **Phase 3:** personal baseline learning and rule-based triggers
-- [ ] **Phase 4:** agent decisions, check-ins, daily summaries and urgent alerts via Telegram
-- [ ] **Phase 5:** simulated scenarios to measure decision accuracy; uptime monitoring
-- [ ] **Later:** migrate to AWS (Lambda + scheduler), native Android app, family dashboard
+- [x] **Phase 0:** tool-using agent, tests, Docker, CI/CD
+- [x] **Phase 1, Stage A:** Postgres, migrations, database tests in CI
+- [x] **Phase 1, Stage B:** per-device tokens, idempotent ingestion, per-minute summaries
+- [x] Security baseline: threat model, supply-chain checks, request limits
+- [ ] **Phase 1, Stage C:** own versioned `v1` ingest contract
+- [ ] **Phase 1, Stage D:** per-day activity view
+- [ ] Own Android app (Kotlin)
+- [ ] **Phases 2–5:** activity features, personal baseline, agent decisions and alerts, scenario testing
+- [ ] Later: move to AWS, least-privilege database logins, rate limiting, data retention

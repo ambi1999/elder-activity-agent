@@ -31,6 +31,10 @@ This folder records the significant design decisions for the Elder Activity Agen
 | [0016](0016-health-checks-avoid-database.md) | Keep `/health` independent of the database | Accepted (implemented) |
 | [0017](0017-llm-resilience.md) | Bound every LLM call, and never let safety alerts depend on the LLM | Accepted (timeouts and retries implemented; fallback planned) |
 | [0018](0018-testing-strategy.md) | Mock the LLM in tests, and test the database against real Postgres | Accepted (implemented) |
+| [0019](0019-security-baseline.md) | Adopt a security baseline for accounts, secrets and database access | Accepted (secret scanning and two-factor authentication: manual settings; separate database logins planned) |
+| [0020](0020-request-limits-and-rate-limiting.md) | Limit request size and batch size now, and add per-device rate limiting | Accepted (size limits implemented; rate limiting planned) |
+| [0021](0021-supply-chain-security.md) | Check dependencies, code and images automatically | Accepted |
+| [0022](0022-data-minimisation-retention-residency.md) | Collect the minimum, delete what isn't needed, and keep Australian users' data in Australia | Proposed (needs legal advice before real users) |
 
 ## Template for new records
 
