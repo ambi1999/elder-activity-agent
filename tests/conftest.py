@@ -1,0 +1,47 @@
+"""Shared test fixtures, including a real Postgres database for database tests.
+
+Database tests run only when TEST_DATABASE_URL is set (Docker locally, a service
+container in CI). They are skipped otherwise, except in CI, where a missing
+database is an error so tests can't silently stop running.
+"""
+import os
+from pathlib import Path
+
+import pytest
+from alembic import command
+from alembic.config import Config
+
+from app import db
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture(scope="session")
+def test_db_url() -> str:
+    url = os.getenv("TEST_DATABASE_URL")
+    if not url:
+        if os.getenv("CI"):
+            pytest.fail("TEST_DATABASE_URL must be set in CI")
+        pytest.skip("TEST_DATABASE_URL not set; start the test database with: docker compose up -d")
+    # Tests drop and recreate tables. Never let them near the real database.
+    if "neon.tech" in url:
+        pytest.exit("Refusing to run tests against a Neon (production) database", returncode=1)
+    return db.normalize_url(url)
+
+
+@pytest.fixture(scope="session")
+def alembic_cfg(test_db_url: str) -> Config:
+    cfg = Config(str(ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(ROOT / "migrations"))
+    cfg.attributes["url"] = test_db_url
+    return cfg
+
+
+@pytest.fixture
+def migrated_db(alembic_cfg, test_db_url, monkeypatch):
+    """A test database with all migrations applied; the app is pointed at it."""
+    command.upgrade(alembic_cfg, "head")
+    monkeypatch.setenv("DATABASE_URL", test_db_url)
+    db.reset_engine()
+    yield db.get_engine()
+    db.reset_engine()

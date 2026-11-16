@@ -1,0 +1,19 @@
+# Throwaway Postgres for running tests on your computer.
+# Start:  docker compose up -d      Stop:  docker compose down
+# Data lives in memory (tmpfs), so every restart begins with an empty database.
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres   # local test database only, not a real secret
+      POSTGRES_DB: elder_test
+    ports:
+      - "5433:5432"                 # 5433 on your computer, to avoid clashing with any local Postgres
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 15

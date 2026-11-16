@@ -8,7 +8,8 @@ import sys
 
 import httpx
 
-base, old = sys.argv[1].rstrip("/"), sys.argv[2]
+# Accept the URL with or without /ingest on the end.
+base, old = sys.argv[1].rstrip("/").removesuffix("/ingest"), sys.argv[2]
 url = f"{base}/ingest"
 body = {"messageId": 1, "sessionId": "check", "deviceId": "check", "payload": []}
 

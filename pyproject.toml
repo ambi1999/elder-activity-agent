@@ -9,6 +9,9 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "google-genai>=1.30",
     "tzdata",
+    "sqlalchemy>=2.1.8",
+    "alembic>=1.20.1",
+    "psycopg[binary]>=3.3.9",
 ]
 
 [dependency-groups]
