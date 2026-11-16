@@ -19,3 +19,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # Python version upgrades are done deliberately, together with
+      # .python-version and pyproject.toml, so CI tests what is deployed.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
