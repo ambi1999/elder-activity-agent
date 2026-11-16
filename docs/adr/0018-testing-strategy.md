@@ -1,6 +1,6 @@
 # 0018. Mock the LLM in tests, and test the database against real Postgres
 
-- **Status:** Accepted (database testing planned for Phase 1, Stage A)
+- **Status:** Accepted (implemented)
 - **Date:** 2026-11-16
 
 ## Context

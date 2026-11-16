@@ -1,3 +1,4 @@
+"""API tests that don't need a database."""
 from fastapi.testclient import TestClient
 
 from app import agent, main
@@ -10,10 +11,15 @@ def fake_agent(message: str) -> dict:
     return {"answer": f"echo: {message}", "tool_calls": []}
 
 
+# ---------- /health ----------
+
 def test_health():
     body = client.get("/health").json()
     assert body["status"] == "ok"
     assert "commit" in body
+
+
+# ---------- /chat ----------
 
 def test_chat(monkeypatch):
     monkeypatch.setattr(agent, "run_agent", fake_agent)
@@ -39,45 +45,28 @@ def test_chat_model_failure(monkeypatch):
     monkeypatch.delenv("APP_API_KEY", raising=False)
     assert client.post("/chat", json={"message": "hi"}).status_code == 502
 
-def sample_batch() -> dict:
-    return {
-        "messageId": 1,
-        "sessionId": "session-123456",
-        "deviceId": "device-123456",
-        "payload": [
-            {"name": "accelerometer", "time": 1700000000000000000, "values": {"x": 0.1, "y": 0.2, "z": 9.8}},
-            {"name": "light", "time": 1700000000000000000, "values": {"lux": 120}},
-        ],
-    }
 
-def test_ingest_ignores_token_in_url(monkeypatch):
-    monkeypatch.setenv("INGEST_TOKEN", "tok")
-    # Even the correct token is refused when sent in the URL.
-    assert client.post("/ingest?token=tok", json=sample_batch()).status_code == 401
+# ---------- /ingest checks that happen before the database ----------
 
-def test_ingest_rejects_bad_or_missing_token(monkeypatch):
-    monkeypatch.setenv("INGEST_TOKEN", "tok")
-    assert client.post("/ingest?token=wrong", json=sample_batch()).status_code == 401
-    assert client.post("/ingest", json=sample_batch()).status_code == 401
+def small_batch() -> dict:
+    return {"messageId": 1, "sessionId": "s", "deviceId": "d", "payload": []}
 
 
-def test_ingest_fails_closed_without_config(monkeypatch):
-    monkeypatch.delenv("INGEST_TOKEN", raising=False)
-    assert client.post("/ingest?token=anything", json=sample_batch()).status_code == 401
-
-def test_ingest_accepts_token_in_header(monkeypatch):
-    monkeypatch.setenv("INGEST_TOKEN", "tok")
-    response = client.post("/ingest", json=sample_batch(), headers={"Authorization": "tok"})
-    assert response.status_code == 200
+def test_ingest_without_token_is_rejected():
+    assert client.post("/ingest", json=small_batch()).status_code == 401
 
 
-def test_ingest_accepts_bearer_header(monkeypatch):
-    monkeypatch.setenv("INGEST_TOKEN", "tok")
-    response = client.post("/ingest", json=sample_batch(), headers={"Authorization": "Bearer tok"})
-    assert response.status_code == 200
+def test_ingest_rejects_oversized_body():
+    big = b"x" * 1_000_001
+    response = client.post(
+        "/ingest", content=big,
+        headers={"Content-Type": "application/json", "Authorization": "anything"},
+    )
+    assert response.status_code == 413
 
 
-def test_ingest_rejects_wrong_header(monkeypatch):
-    monkeypatch.setenv("INGEST_TOKEN", "tok")
-    response = client.post("/ingest", json=sample_batch(), headers={"Authorization": "Bearer nope"})
-    assert response.status_code == 401
+def test_ingest_rejects_too_many_readings():
+    body = small_batch()
+    body["payload"] = [{"name": "light"}] * 10_001
+    response = client.post("/ingest", json=body, headers={"Authorization": "anything"})
+    assert response.status_code == 422

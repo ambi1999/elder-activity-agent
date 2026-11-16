@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from sqlalchemy import text
 
 from app import db
 
@@ -39,9 +40,12 @@ def alembic_cfg(test_db_url: str) -> Config:
 
 @pytest.fixture
 def migrated_db(alembic_cfg, test_db_url, monkeypatch):
-    """A test database with all migrations applied; the app is pointed at it."""
+    """An empty test database with all migrations applied; the app is pointed at it."""
     command.upgrade(alembic_cfg, "head")
     monkeypatch.setenv("DATABASE_URL", test_db_url)
     db.reset_engine()
-    yield db.get_engine()
+    engine = db.get_engine()
+    with engine.begin() as conn:
+        conn.execute(text("TRUNCATE devices, ingested_batches, step_readings, minute_summary"))
+    yield engine
     db.reset_engine()

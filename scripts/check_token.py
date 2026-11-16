@@ -1,6 +1,6 @@
-"""Check that an old ingest token is rejected and the current one works.
+"""Check that an old token is rejected and a current device token works.
 
-Usage:
+Put the current device token in .env as DEVICE_TOKEN, then:
     uv run --env-file .env python scripts/check_token.py https://your-url.onrender.com OLD_TOKEN
 """
 import os
@@ -11,7 +11,7 @@ import httpx
 # Accept the URL with or without /ingest on the end.
 base, old = sys.argv[1].rstrip("/").removesuffix("/ingest"), sys.argv[2]
 url = f"{base}/ingest"
-body = {"messageId": 1, "sessionId": "check", "deviceId": "check", "payload": []}
+body = {"messageId": 1, "sessionId": "token-check", "deviceId": "check", "payload": []}
 
 
 def status(**kwargs) -> int:
@@ -20,4 +20,4 @@ def status(**kwargs) -> int:
 
 print("old token in header:", status(headers={"Authorization": old}))
 print("old token in URL:   ", status(params={"token": old}))
-print("current token:      ", status(headers={"Authorization": os.environ["INGEST_TOKEN"]}))
+print("current token:      ", status(headers={"Authorization": os.environ["DEVICE_TOKEN"]}))
