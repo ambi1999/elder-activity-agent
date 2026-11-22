@@ -86,11 +86,10 @@ Full plan: [docs/ROADMAP.md](docs/ROADMAP.md). User stories: [docs/backlog/worki
 - [x] **Phase 1, Stage B:** per-device tokens, idempotent ingestion, per-minute summaries
 - [x] Security baseline: threat model, supply-chain checks, request limits
 - [x] Phone app: phone-sensor-logger, a separate product in a private repository (ADR 0023)
-- [ ] **C2a:** typed settings, ruff, mypy, pre-commit
-- [ ] **Backend SRS**
-- [ ] **C2b:** `POST /v1/readings` implementing the logger's protocol v1
-- [ ] **C3:** households, email sign-in, add a phone by QR code
-- [ ] **D:** family web app: today and past days, contacts
-- [ ] **E:** inactivity and phone-silent alerts by email and Telegram (**working version**)
+- [ ] **Step A:** foundations (typed settings, ruff, mypy), `POST /v1/readings` for the logger's protocol v1, households and QR pairing by script
+- [ ] **Step B (logger):** connect by QR with consent, uploads
+- [ ] **Step C:** inactivity and phone-silent alerts by Telegram and email (**working prototype**)
+- [ ] **Step D:** family web app: sign-in, today and past days, add phone, contacts; brand from configuration
+- [ ] **Backend SRS**, written from what was built
 - [ ] **Phases 2–5:** activity features, personal baseline, agent summaries, evaluation
 - [ ] Before real users: legal review, Australian hosting, least-privilege logins, retention

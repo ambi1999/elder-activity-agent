@@ -1,0 +1,27 @@
+body{margin:0;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#222;white-space:nowrap}
+.ph{display:inline-block;vertical-align:top;margin:8px;width:360px;height:690px;border:2px solid #555;border-radius:24px;position:relative;overflow:hidden;white-space:normal;font-size:13px}
+.bar{background:#e8eef7;border-bottom:1.5px solid #555;height:54px;display:flex;align-items:center;padding:0 18px;font-weight:bold;font-size:16px;gap:10px}
+.bar .r{margin-left:auto;font-weight:normal;font-size:20px}
+.c{padding:12px 18px}
+.cap{position:absolute;bottom:10px;width:100%;text-align:center;font-size:11px;color:#777}
+.btn{display:inline-block;border:1.5px solid #555;border-radius:8px;padding:10px 14px;text-align:center;background:#fff;min-height:20px}
+.p{background:#3b6db3;color:#fff;border-color:#3b6db3;font-weight:bold}
+.w{display:block;width:auto;margin:8px 0}
+.box{border:1.5px solid #999;border-radius:10px;padding:10px 12px;margin:8px 0}
+.warn{border-color:#c77700;background:#fff6e5}
+.ok{color:#2e7d32;font-weight:bold}.amber{color:#c77700;font-weight:bold}.mut{color:#777;font-size:12px}
+.in{border:1.5px solid #999;border-radius:6px;padding:9px;color:#777;margin:4px 0 10px;background:#f7f7f7}
+.row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eee}
+.big{font-size:26px;font-weight:bold}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{border:1.5px solid #999;border-radius:10px;padding:8px}
+.bars{display:flex;align-items:flex-end;gap:3px;height:70px;border-bottom:1px solid #999;margin-top:6px}
+.bars i{display:block;width:10px;background:#9db6dc}
+.qr{width:150px;height:150px;margin:6px auto;background:repeating-conic-gradient(#333 0 25%,#fff 0 50%) 0 0/18px 18px;border:6px solid #fff;outline:1.5px solid #555}
+.nav{position:absolute;bottom:30px;left:0;right:0;display:flex;border-top:1.5px solid #555;background:#fafafa}
+.nav div{flex:1;text-align:center;padding:9px 0;font-size:11px}.nav .on{font-weight:bold;color:#3b6db3}
+h4{margin:10px 0 4px}
+.dt{display:inline-block;vertical-align:top;margin:8px;width:1100px;height:690px;border:2px solid #555;border-radius:10px;position:relative;overflow:hidden;white-space:normal;font-size:13px}
+.side{position:absolute;top:54px;left:0;bottom:0;width:190px;border-right:1.5px solid #555;background:#fafafa;padding:12px}
+.side div{padding:9px 6px}.side .on{font-weight:bold;color:#3b6db3;background:#e8eef7;border-radius:6px}
+.main{position:absolute;top:54px;left:205px;right:0;padding:12px 18px}

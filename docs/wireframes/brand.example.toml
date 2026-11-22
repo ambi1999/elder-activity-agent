@@ -1,0 +1,17 @@
+# Brand settings for the family web app (sketch for the plan; the real file
+# would be config/brand.toml). Change the company, logo or colours here only.
+[company]
+name = "TechData Innovate"           # shown in the footer and on sign-in
+website = "https://techdatainnovate.com.au/"
+logo_text = "∎ TECHDATA INNOVATE"    # used when logo_file is empty
+logo_file = ""                       # e.g. "static/brand/logo.svg"
+
+[product]
+name = "Elder Activity"              # the app's own name, in the header
+
+[colours]                            # each pair is contrast-checked in CI (WCAG 2.2 AA)
+primary = "#0B1F3A"                  # navy from the company site; 16.5:1 on white
+accent = "#0A6B74"                   # assumed teal; 6.2:1 on white; replace when known
+ok = "#2E7D32"                       # status colours are separate from the brand
+warn_text = "#8A5300"
+warn_bg = "#FFF4E0"

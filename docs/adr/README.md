@@ -35,10 +35,10 @@ This folder records the significant design decisions for the Elder Activity Agen
 | [0020](0020-request-limits-and-rate-limiting.md) | Limit request size and batch size now, and add per-device rate limiting | Accepted (size limits implemented; rate limiting planned) |
 | [0021](0021-supply-chain-security.md) | Check dependencies, code and images automatically | Accepted |
 | [0022](0022-data-minimisation-retention-residency.md) | Collect the minimum, delete what isn't needed, and keep Australian users' data in Australia | Proposed (needs legal advice before real users) |
-| [0023](0023-phone-sensor-logger-as-data-source.md) | Receive data from phone-sensor-logger through its protocol v1, and keep the logger a separate product | Accepted (to be built in Stage C2b) |
-| [0024](0024-households-and-pairing.md) | Serve many households, and pair phones with the protocol v1 setup QR code | Accepted (to be built in Stage C3) |
-| [0025](0025-family-web-app.md) | Build the family interface as a server-rendered, accessible web app that works well on phones | Accepted (to be built in Stages C3 and D) |
-| [0026](0026-rules-decide-llm-explains.md) | Let rules decide when to alert, let the LLM explain, and send alerts by email and Telegram | Accepted (to be built in Stage E) |
+| [0023](0023-phone-sensor-logger-as-data-source.md) | Receive data from phone-sensor-logger through its protocol v1, and keep the logger a separate product | Accepted (to be built in step A) |
+| [0024](0024-households-and-pairing.md) | Serve many households, and pair phones with the protocol v1 setup QR code | Accepted (data model and command-line pairing in step A; web pages in step D) |
+| [0025](0025-family-web-app.md) | Build the family interface as a server-rendered, accessible web app that works well on phones | Accepted (to be built in step D; branding from `config/brand.toml`) |
+| [0026](0026-rules-decide-llm-explains.md) | Let rules decide when to alert, let the LLM explain, and send alerts by email and Telegram | Accepted (to be built in step C) |
 
 ## Template for new records
 

@@ -1,6 +1,6 @@
 # 0014. Define our own versioned ingest contract, with an adapter per data source
 
-- **Status:** Accepted (Sensor Logger adapter implemented; `v1` endpoint in Stage C2b, implementing phone-sensor-logger's protocol v1: [ADR 0023](0023-phone-sensor-logger-as-data-source.md))
+- **Status:** Accepted (Sensor Logger adapter implemented; `v1` endpoint in step A, implementing phone-sensor-logger's protocol v1: [ADR 0023](0023-phone-sensor-logger-as-data-source.md))
 - **Date:** 2026-11-16
 
 ## Context
