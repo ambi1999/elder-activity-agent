@@ -21,6 +21,9 @@ Collect only what the product needs: no location, microphone or camera; per-minu
 
 ## Consequences
 
+The phone app can record location, but phones are set up with its `activity` profile, which has none; location readings that arrive anyway are ignored and never stored, and the family web app never shows a location ([ADR 0023](0023-phone-sensor-logger-as-data-source.md), [ADR 0025](0025-family-web-app.md)).
+
+
 Requires a scheduled job (not available on the free tier without workarounds) and a database region move before real users. Retention periods may change after legal advice.
 
 ## When to revisit

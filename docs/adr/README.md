@@ -22,11 +22,11 @@ This folder records the significant design decisions for the Elder Activity Agen
 | [0007](0007-ci-cd-gated-deploys.md) | Deploy only through GitHub Actions, and verify the exact commit is live | Accepted |
 | [0008](0008-protected-main-pull-requests.md) | Protect `main` and make every change through a pull request | Accepted |
 | [0009](0009-secrets-management.md) | Keep secrets out of the repository, store each secret in as few places as possible, and verify rotations | Accepted |
-| [0010](0010-sensor-logger-then-native-app.md) | Collect data with Sensor Logger first, and build a native Android app later | Accepted |
+| [0010](0010-sensor-logger-then-native-app.md) | Collect data with Sensor Logger first, and build a native Android app later | Accepted (native app part superseded by 0023) |
 | [0011](0011-ingest-authentication.md) | Authenticate devices with tokens in the Authorization header, fail closed, and move to per-device hashed tokens | Accepted (implemented; a pairing flow for the native app is planned) |
 | [0012](0012-neon-postgres.md) | Use Neon serverless Postgres | Accepted |
 | [0013](0013-aggregate-at-ingestion.md) | Summarise sensor data per minute at ingestion, keep raw step totals, and make ingestion idempotent | Accepted (implemented) |
-| [0014](0014-own-ingest-contract.md) | Define our own versioned ingest contract, with an adapter per data source | Accepted (Sensor Logger adapter implemented; `v1` endpoint in Stage C) |
+| [0014](0014-own-ingest-contract.md) | Define our own versioned ingest contract, with an adapter per data source | Accepted (Sensor Logger adapter implemented; `v1` endpoint in Stage C); the native app is phone-sensor-logger, 0023 |
 | [0015](0015-migrations-at-startup.md) | Run Alembic migrations when the app starts, and move them into the pipeline later | Accepted (migrations at startup implemented; pipeline step planned) |
 | [0016](0016-health-checks-avoid-database.md) | Keep `/health` independent of the database | Accepted (implemented) |
 | [0017](0017-llm-resilience.md) | Bound every LLM call, and never let safety alerts depend on the LLM | Accepted (timeouts and retries implemented; fallback planned) |
@@ -35,6 +35,10 @@ This folder records the significant design decisions for the Elder Activity Agen
 | [0020](0020-request-limits-and-rate-limiting.md) | Limit request size and batch size now, and add per-device rate limiting | Accepted (size limits implemented; rate limiting planned) |
 | [0021](0021-supply-chain-security.md) | Check dependencies, code and images automatically | Accepted |
 | [0022](0022-data-minimisation-retention-residency.md) | Collect the minimum, delete what isn't needed, and keep Australian users' data in Australia | Proposed (needs legal advice before real users) |
+| [0023](0023-phone-sensor-logger-as-data-source.md) | Receive data from phone-sensor-logger through its protocol v1, and keep the logger a separate product | Accepted (to be built in Stage C2b) |
+| [0024](0024-households-and-pairing.md) | Serve many households, and pair phones with the protocol v1 setup QR code | Accepted (to be built in Stage C3) |
+| [0025](0025-family-web-app.md) | Build the family interface as a server-rendered, accessible web app that works well on phones | Accepted (to be built in Stages C3 and D) |
+| [0026](0026-rules-decide-llm-explains.md) | Let rules decide when to alert, let the LLM explain, and send alerts by email and Telegram | Accepted (to be built in Stage E) |
 
 ## Template for new records
 
