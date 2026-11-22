@@ -1,6 +1,6 @@
 # 0010. Collect data with Sensor Logger first, and build a native Android app later
 
-- **Status:** Accepted
+- **Status:** Accepted (the native app part is superseded by [ADR 0023](0023-phone-sensor-logger-as-data-source.md): the app is the separate phone-sensor-logger project)
 - **Date:** 2026-11-16
 
 ## Context

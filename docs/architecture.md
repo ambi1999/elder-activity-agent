@@ -1,6 +1,6 @@
 # Architecture
 
-How the system looks **today** (end of Phase 1, Stage B). For *why* it looks like this, see the [Architecture Decision Records](adr/README.md). Diagrams follow the [C4 model](https://c4model.com): each level zooms in further.
+Sections 1 to 8 show how the system looks **today** (end of Phase 1, Stage B). [Section 9](#9-target-architecture-the-working-version) shows the **target for the working version** (Stages C2b to E in the [roadmap](ROADMAP.md)). For *why* it looks like this, see the [Architecture Decision Records](adr/README.md). Diagrams follow the [C4 model](https://c4model.com): each level zooms in further.
 
 Dashed lines show parts that are planned but not built yet.
 
@@ -186,7 +186,229 @@ Dependabot opens pull requests for dependency, GitHub Actions and Docker image u
 
 ## 8. Not built yet
 
-- `v1` ingest contract (Stage C) and data view endpoint (Stage D)
-- Our own Android app
-- Activity features, personal baseline, agent decisions and Telegram alerts (Phases 2–4)
-- Rate limiting, least-privilege database logins, retention jobs
+- Protocol v1 endpoint (Stage C2b), replacing the Sensor Logger adapter
+- Households, sign-in, pairing and the family web app (Stages C3 and D)
+- Rules, alerts by email and Telegram (Stage E)
+- Activity features, personal baseline, agent summaries (Phases 2–4)
+- Least-privilege database logins, retention jobs, row-level security
+
+## 9. Target architecture: the working version
+
+Decisions: [0023](adr/0023-phone-sensor-logger-as-data-source.md) (data source), [0024](adr/0024-households-and-pairing.md) (households and pairing), [0025](adr/0025-family-web-app.md) (web app), [0026](adr/0026-rules-decide-llm-explains.md) (alerts). User stories: [backlog/working-version.md](backlog/working-version.md).
+
+### 9.1 System context
+
+```mermaid
+flowchart TB
+    elder["👵 Monitored person<br/>carries an Android phone<br/>with phone-sensor-logger"]
+    family["👨‍👩‍👧 Family members<br/>(owners, viewers)<br/>on their own phones or computers"]
+    contacts["📨 Alert contacts"]
+    dev["🧑‍💻 Developer"]
+
+    system["Elder Activity Agent<br/>stores activity per household, shows the day,<br/>and alerts when something looks unusual"]
+
+    email["Transactional email API"]
+    telegram["Telegram Bot API"]
+    gemini["Google Gemini API"]
+
+    elder -- "protocol v1 batches<br/>(after consent on the phone)" --> system
+    family -- "web app (PWA):<br/>sign in, add phone, view, settings" --> system
+    system -- "sign-in links, alerts" --> email
+    system -- "alerts" --> telegram
+    email --> contacts
+    telegram --> contacts
+    system -- "explanations from summaries" --> gemini
+    dev -- "deploys and operates" --> system
+```
+
+### 9.2 Containers
+
+```mermaid
+flowchart TB
+    subgraph phone["Monitored person's phone"]
+        logger["phone-sensor-logger<br/>(Kotlin, separate product)"]
+    end
+    subgraph fam["Family member's device"]
+        browser["Browser / installed PWA"]
+    end
+
+    subgraph render["Render (Docker)"]
+        api["FastAPI service<br/>/v1/readings · web pages · /jobs/check-alerts<br/>/chat · /health"]
+    end
+
+    neon[("Neon Postgres")]
+    gemini["Gemini API"]
+    email["Email API"]
+    tg["Telegram Bot API"]
+    sched["GitHub Actions schedule<br/>(every 5 minutes)"]
+
+    logger -- "HTTPS POST /v1/readings<br/>Bearer device token" --> api
+    browser -- "HTTPS, session cookie,<br/>HTML + HTMX" --> api
+    sched -- "POST /jobs/check-alerts<br/>job token" --> api
+    api -- "SQL over TLS" --> neon
+    api -- "HTTPS" --> gemini
+    api -- "HTTPS" --> email
+    api -- "HTTPS" --> tg
+```
+
+### 9.3 Components
+
+```mermaid
+flowchart LR
+    subgraph ingest["Ingest"]
+        v1["v1_readings.py<br/>protocol v1 validation"] --> storage["storage.py"]
+    end
+    subgraph web["Web app"]
+        auth["auth.py<br/>magic links, sessions, CSRF"]
+        pages["pages/*.py<br/>Jinja2 + HTMX"]
+        pairing["pairing.py<br/>pending devices, QR"]
+    end
+    subgraph alerts["Alerts"]
+        rules["rules.py<br/>inactivity, phone silent"]
+        lifecycle["alerts.py<br/>open, acknowledged, resolved"]
+        explain["explain.py<br/>LLM with template fallback"]
+        notifiers["notifiers/<br/>Notifier: email, telegram"]
+    end
+    scope["households.py<br/>household-scoped queries"]
+
+    pages --> auth
+    pages --> scope
+    pairing --> scope
+    rules --> scope
+    rules --> lifecycle --> explain --> notifiers
+    storage --> db["db.py"]
+    scope --> db
+```
+
+Every read of household data goes through `households.py`, which takes the signed-in member's household: this is where isolation is enforced and tested.
+
+### 9.4 Pairing a phone
+
+```mermaid
+sequenceDiagram
+    actor O as Owner (browser)
+    participant W as Web app
+    participant D as Neon
+    participant L as phone-sensor-logger
+    actor P as Phone's owner
+
+    O->>W: Add phone (signed in, CSRF token)
+    W->>D: INSERT device (pending, SHA-256(token), expires after pending_token_expiry_minutes)
+    W-->>O: Provisioning v1 QR code, shown once<br/>(endpoint, token, device name)
+    O->>L: Scan QR code (or type details)
+    L->>P: What will be shared, to whom, how often
+    P-->>L: Agree
+    L->>L: Store token in Android Keystore
+    L->>W: POST /v1/readings (heartbeat batch)
+    W->>D: Pending and not expired? → mark active
+    W-->>L: 200
+    O->>W: Page refresh (HTMX)
+    W-->>O: "Phone connected"
+    Note over W,D: No first batch within pending_token_expiry_minutes<br/>(setting, default 30):<br/>the token expires and the owner gets a new code
+```
+
+### 9.5 Checking for and sending an alert
+
+```mermaid
+sequenceDiagram
+    participant S as Schedule
+    participant R as rules.py
+    participant D as Neon
+    participant X as explain.py
+    participant G as Gemini
+    participant N as Notifiers
+    actor C as Alert contacts
+
+    S->>R: POST /jobs/check-alerts
+    R->>D: Per person: last activity, last batch, settings, open alerts
+    alt rule fires and no open alert
+        R->>D: INSERT alert (open)
+        R->>X: Explain (per-minute summaries only)
+        X->>G: Prompt (timeout 10 s)
+        alt LLM answers
+            G-->>X: Short explanation
+        else error or timeout
+            X->>X: Template text
+        end
+        X->>N: Message
+        N->>C: Email and Telegram (respecting quiet hours)
+    else activity resumed and alert open
+        R->>D: UPDATE alert resolved
+        R->>N: "Activity resumed"
+    end
+```
+
+### 9.6 Target data model
+
+New tables, added to those in section 5 (`devices` gains `person_id`, `status` and `pending_expires_at`).
+
+```mermaid
+erDiagram
+    households ||--o{ people : has
+    households ||--o{ members : has
+    users ||--o{ members : "belongs as"
+    users ||--o{ sessions : has
+    users ||--o{ login_links : requests
+    people ||--o{ devices : carries
+    households ||--o{ alert_contacts : has
+    people ||--|| alert_settings : has
+    people ||--o{ alerts : about
+    alerts ||--o{ alert_deliveries : "sent as"
+    alert_contacts ||--o{ alert_deliveries : receives
+
+    households { uuid id PK
+        text name }
+    people { uuid id PK
+        uuid household_id FK
+        text display_name
+        text timezone }
+    users { uuid id PK
+        citext email "unique" }
+    members { uuid household_id PK
+        uuid user_id PK
+        text role "owner or viewer" }
+    sessions { text id_hash PK
+        uuid user_id FK
+        timestamptz expires_at
+        timestamptz revoked_at }
+    login_links { text token_hash PK
+        uuid user_id FK
+        timestamptz expires_at "15 min"
+        timestamptz used_at }
+    devices { uuid id PK
+        uuid person_id FK
+        text status "pending, active, revoked"
+        timestamptz pending_expires_at }
+    alert_contacts { uuid id PK
+        uuid household_id FK
+        text channel "email or telegram"
+        text address "email or chat id"
+        timestamptz confirmed_at
+        time quiet_from
+        time quiet_to }
+    alert_settings { uuid person_id PK
+        time waking_from
+        time waking_to
+        int inactive_hours
+        int silent_hours }
+    alerts { uuid id PK
+        uuid person_id FK
+        text rule
+        text status "open, acknowledged, resolved"
+        timestamptz opened_at
+        uuid acknowledged_by }
+    alert_deliveries { uuid id PK
+        uuid alert_id FK
+        uuid contact_id FK
+        text result
+        timestamptz sent_at }
+```
+
+### 9.7 Quality goals added for the working version
+
+| Goal | How | Decisions |
+|---|---|---|
+| Household isolation | One module for scoped queries; cross-household tests on every route | [0024](adr/0024-households-and-pairing.md) |
+| Accessible on any phone | WCAG 2.2 AA, mobile-first CSS, axe-core and Lighthouse in CI, manual screen-reader checks | [0025](adr/0025-family-web-app.md) |
+| Alerts are dependable | Rules with scenario tests; LLM never on the critical path | [0026](adr/0026-rules-decide-llm-explains.md) |
+| Replaceable phone app | Only protocol v1 crosses the boundary; contract tests | [0023](adr/0023-phone-sensor-logger-as-data-source.md) |

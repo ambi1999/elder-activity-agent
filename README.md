@@ -79,12 +79,18 @@ uv run --env-file .env python scripts/register_device.py revoke DEVICE_ID
 
 ## Roadmap
 
+Full plan: [docs/ROADMAP.md](docs/ROADMAP.md). User stories: [docs/backlog/working-version.md](docs/backlog/working-version.md).
+
 - [x] **Phase 0:** tool-using agent, tests, Docker, CI/CD
 - [x] **Phase 1, Stage A:** Postgres, migrations, database tests in CI
 - [x] **Phase 1, Stage B:** per-device tokens, idempotent ingestion, per-minute summaries
 - [x] Security baseline: threat model, supply-chain checks, request limits
-- [ ] **Phase 1, Stage C:** own versioned `v1` ingest contract
-- [ ] **Phase 1, Stage D:** per-day activity view
-- [ ] Own Android app (Kotlin)
-- [ ] **Phases 2–5:** activity features, personal baseline, agent decisions and alerts, scenario testing
-- [ ] Later: move to AWS, least-privilege database logins, rate limiting, data retention
+- [x] Phone app: phone-sensor-logger, a separate product in a private repository (ADR 0023)
+- [ ] **C2a:** typed settings, ruff, mypy, pre-commit
+- [ ] **Backend SRS**
+- [ ] **C2b:** `POST /v1/readings` implementing the logger's protocol v1
+- [ ] **C3:** households, email sign-in, add a phone by QR code
+- [ ] **D:** family web app: today and past days, contacts
+- [ ] **E:** inactivity and phone-silent alerts by email and Telegram (**working version**)
+- [ ] **Phases 2–5:** activity features, personal baseline, agent summaries, evaluation
+- [ ] Before real users: legal review, Australian hosting, least-privilege logins, retention
