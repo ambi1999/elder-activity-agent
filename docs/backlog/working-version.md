@@ -1,6 +1,14 @@
-# Backlog: working version (Stages C2b to E)
+# Backlog: working version (fast path, steps A to D)
 
-User stories for the [roadmap](../ROADMAP.md)'s working version. Each is written as "As a *role*, I want *capability*, so that *benefit*", with acceptance criteria in Given/When/Then form. The backend SRS turns these into numbered requirements; until then, story IDs are the reference for issues and pull requests.
+User stories for the [roadmap](../ROADMAP.md)'s fast path. Story IDs keep their original prefixes (C2b, C3, D, E); the step that builds each one is in the table below. Layouts are in [wireframes/](../wireframes/README.md). Each is written as "As a *role*, I want *capability*, so that *benefit*", with acceptance criteria in Given/When/Then form. The backend SRS turns these into numbered requirements; until then, story IDs are the reference for issues and pull requests.
+
+## Which step builds what
+
+| Step | Stories |
+|---|---|
+| A | C2b-1, C2b-2, A-1, A-2, C3-3 (command-line version) |
+| C | E-1 to E-5 (settings by script; acknowledging from the message), C-1 |
+| D | C3-1 to C3-6, D-1 to D-4, E-3 and E-5 in the web app |
 
 ## Roles
 
@@ -39,6 +47,19 @@ flowchart LR
     contact --> uc9
     contact --> uc7
 ```
+
+## Step A: foundations and households
+
+### A-1 Typed, documented settings
+*As a* developer, *I want* every setting in `config/settings.toml`, commented with its unit and allowed range and checked at startup, *so that* behaviour is changed by configuration, never by editing code.
+- Given a value outside its range (for example `pairing.pending_token_expiry_minutes = 2`), when the app starts, then it refuses to start and names the setting and its allowed range.
+- Given an environment variable such as `PAIRING__PENDING_TOKEN_EXPIRY_MINUTES`, when set, then it overrides the file.
+- Given any Python module, when ruff runs, then a missing module or public-function docstring fails the build ([CONTRIBUTING.md](../../CONTRIBUTING.md)).
+
+### A-2 Set up a household from the command line
+*As a* developer, *I want* `scripts/household.py` to create a household and person, add a phone and print its setup QR code in the terminal, *so that* the prototype works end to end before the web app exists.
+- Given `household.py add-phone`, when run, then a pending device is created and the provisioning v1 QR code is printed once, with the endpoint and token as text and the expiry time.
+- Given the logger scans it and the owner agrees, when the first batch arrives within the expiry time, then the device becomes active (`household.py list` shows it).
 
 ## Stage C2b: accept the logger's data
 
@@ -103,12 +124,24 @@ flowchart LR
 *As an* owner or viewer, *I want* to see each past day's activity by hour, *so that* I can spot changes in routine.
 - Given 14 days of data, when I choose a day, then its hourly activity and totals are shown, with a text alternative to the chart.
 
+### D-4 Brand from configuration
+*As the* company running the service, *I want* the company name, logo, product name and colours to come from `config/brand.toml`, *so that* they can be changed without touching code ([design.md](../design.md)).
+- Given a new name and logo in `config/brand.toml`, when the app restarts, then every page, the footer and the installed app's name and icon use them.
+- Given a colour that fails WCAG 2.2 AA contrast against its background, when CI runs, then the contrast test fails and names the colour pair.
+
 ### D-3 Manage alert contacts
 *As an* owner, *I want* to add email and Telegram contacts with quiet hours, *so that* the right people are told at sensible times.
 - Given an email contact, when added, then a confirmation email must be opened before alerts are sent to it.
 - Given a Telegram contact, when they open the one-time link and press Start, then their chat is linked and a test message arrives.
 
-## Stage E: first alerts (working version)
+## Step C: first alerts (working prototype)
+
+### C-1 Add alert contacts from the command line
+*As a* developer, *I want* `household.py` to add email and Telegram contacts and set the alert settings, *so that* alerts can be tested before the web app exists.
+- Given `household.py add-contact --telegram`, when run, then it prints a one-time `t.me/<bot>?start=<code>` link; opening it and pressing Start links the chat and sends a test message.
+- Given `household.py add-contact --email`, when run, then a confirmation email is sent and alerts go to the address only after it is confirmed.
+
+## Stage E: first alerts
 
 ### E-1 Alert on inactivity
 *As an* alert contact, *I want* to be told when there has been no activity for too long during waking hours, *so that* I can check on my relative.

@@ -12,7 +12,7 @@ The question is how tightly the two are coupled: whether the logger knows about 
 ## Decision
 
 - **The logger stays generic.** It knows only protocol v1: an HTTPS endpoint, a device token, batches of readings and per-minute summaries, and the provisioning QR format. Households, people, family members and alerts exist only here.
-- **This service implements protocol v1** at `POST /v1/readings` (Stage C2b), with a vendored, version-pinned copy of the protocol's schemas and examples and contract tests that run every example through the endpoint. The Sensor Logger adapter on `/ingest` stays until no test phone uses it, then is removed.
+- **This service implements protocol v1** at `POST /v1/readings` (step A), with a vendored, version-pinned copy of the protocol's schemas and examples and contract tests that run every example through the endpoint. The Sensor Logger adapter on `/ingest` stays until no test phone uses it, then is removed.
 - **Phones use the logger's `activity` profile** (steps, light, battery, screen, activity, motion). It has no location; any location reading that arrives anyway is ignored and never stored (ADR 0022).
 - **Setup uses the protocol's QR format** (see ADR 0024 for pairing).
 - This supersedes ADR 0010's plan for an own app inside this project, and ADR 0014's "native app" is phone-sensor-logger.

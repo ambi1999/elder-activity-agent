@@ -18,6 +18,7 @@ Family members need to sign in, add a phone, see how their person's day is going
   - **Core Web Vitals** on a mid-range phone: LCP under 2.5 s, INP under 200 ms, CLS under 0.1.
   - **OWASP ASVS** level 1 for authentication, sessions and access control, with a Content Security Policy that allows only the app's own scripts.
 - **Testing**: Playwright tests with axe-core at 320, 375 and 412 px widths and at 200% text; Lighthouse CI for performance and accessibility; a manual check with TalkBack (Android) and VoiceOver (iPhone) before each release.
+- **Branding is configuration.** The company name, logo, product name and colours come from `config/brand.toml` and generated design tokens, never from templates or CSS, and colour contrast is tested in CI ([design.md](../design.md)). A rebrand or a white-label deployment is a configuration change.
 - **Never shows location**, and shows activity only as daily and hourly summaries (ADR 0022).
 
 ## Alternatives considered

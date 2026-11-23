@@ -1,6 +1,6 @@
 # Architecture
 
-Sections 1 to 8 show how the system looks **today** (end of Phase 1, Stage B). [Section 9](#9-target-architecture-the-working-version) shows the **target for the working version** (Stages C2b to E in the [roadmap](ROADMAP.md)). For *why* it looks like this, see the [Architecture Decision Records](adr/README.md). Diagrams follow the [C4 model](https://c4model.com): each level zooms in further.
+Sections 1 to 8 show how the system looks **today** (end of Phase 1, Stage B). [Section 9](#9-target-architecture-the-working-version) shows the **target for the working version** (steps A to D in the [roadmap](ROADMAP.md)). For *why* it looks like this, see the [Architecture Decision Records](adr/README.md). Diagrams follow the [C4 model](https://c4model.com): each level zooms in further.
 
 Dashed lines show parts that are planned but not built yet.
 
@@ -186,9 +186,9 @@ Dependabot opens pull requests for dependency, GitHub Actions and Docker image u
 
 ## 8. Not built yet
 
-- Protocol v1 endpoint (Stage C2b), replacing the Sensor Logger adapter
-- Households, sign-in, pairing and the family web app (Stages C3 and D)
-- Rules, alerts by email and Telegram (Stage E)
+- Protocol v1 endpoint, households and command-line pairing (step A), replacing the Sensor Logger adapter
+- Rules, alerts by email and Telegram (step C)
+- Sign-in and the family web app (step D)
 - Activity features, personal baseline, agent summaries (Phases 2–4)
 - Least-privilege database logins, retention jobs, row-level security
 
@@ -245,6 +245,7 @@ flowchart TB
     logger -- "HTTPS POST /v1/readings<br/>Bearer device token" --> api
     browser -- "HTTPS, session cookie,<br/>HTML + HTMX" --> api
     sched -- "POST /jobs/check-alerts<br/>job token" --> api
+    cli["household.py (developer, steps A–C)<br/>households, contacts, QR in terminal"] -- "SQL over TLS" --> neon
     api -- "SQL over TLS" --> neon
     api -- "HTTPS" --> gemini
     api -- "HTTPS" --> email
