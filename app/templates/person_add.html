@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" action="/people/add" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if error %}<p class="banner red" role="alert">{{ error }}</p>{% endif %}
+  <div class="field"><label for="p-name">Their name</label><input id="p-name" name="name" value="{{ form.name }}" maxlength="60" required placeholder="e.g. Mum">
+    <p class="muted small">A first name or nickname is enough.</p></div>
+  <div class="field"><label for="p-tz">Where they live (timezone)</label>
+    <input id="p-tz" name="timezone" list="zones" value="{{ form.timezone }}" required autocomplete="off">
+    <datalist id="zones">{% for z in zones %}<option value="{{ z }}">{% endfor %}</datalist></div>
+  {% if owned %}
+  <fieldset class="field"><legend>Household</legend>
+    <label class="choice"><input type="radio" name="household" value="new"{% if form.household == "new" %} checked{% endif %}> A new household (you'll be its owner)</label>
+    {% for h in owned %}<label class="choice"><input type="radio" name="household" value="{{ h.id }}"{% if form.household == h.id | string %} checked{% endif %}> {{ h.name }}</label>{% endfor %}
+  </fieldset>
+  {% else %}<input type="hidden" name="household" value="new">{% endif %}
+  <button class="btn" type="submit">Add</button>
+</form>
+{% endblock %}

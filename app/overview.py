@@ -241,3 +241,22 @@ def day_activity(conn: Connection, person: VisiblePerson, day: date) -> Day:
 def today(now: datetime, timezone: str) -> date:
     """Today's date where the person lives."""
     return now.astimezone(ZoneInfo(timezone)).date()
+
+
+DAYS_SHOWN = 7  # past days the web app offers: today and the six before it (story D-2)
+
+
+def recent_days(conn: Connection, person: VisiblePerson, now: datetime) -> list[Day]:
+    """Today and the days before it, newest first (story D-2)."""
+    last = today(now, person.timezone)
+    return [day_activity(conn, person, last - timedelta(days=n)) for n in range(DAYS_SHOWN)]
+
+
+def day_label(day: date, now: datetime, timezone: str) -> str:
+    """A day in words: "Today", "Yesterday" or e.g. "Sat 21 Nov"."""
+    days = (today(now, timezone) - day).days
+    if days == 0:
+        return "Today"
+    if days == 1:
+        return "Yesterday"
+    return day.strftime("%a %d %b").replace(" 0", " ")

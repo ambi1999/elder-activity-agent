@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+{# Story C3-4. Owners can change settings, phones, contacts and members; viewers can look and say "I'm checking". #}
+{% if notice %}<p class="banner green" role="status">{{ notice }}</p>{% endif %}
+<p class="muted small">Members can see everyone in {{ person.household_name }}.</p>
+<ul class="list">
+  {% for m in members %}
+  <li class="item">
+    <span class="grow"><b>{{ m.user.display_name }}{% if m.user.id == me.id %} (you){% endif %}</b><small>{{ m.user.email }} · {{ m.role }}</small></span>
+    {% if person.is_owner %}
+    <form method="post" action="/people/{{ person.id }}/members/{{ m.user.id }}/remove">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn secondary small-btn" type="submit" aria-label="Remove {{ m.user.display_name }}">{{ "Leave" if m.user.id == me.id else "Remove" }}</button>
+    </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% if person.is_owner %}
+<h2>Invite someone</h2>
+<form method="post" action="/people/{{ person.id }}/members/invite" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if error %}<p class="banner red" role="alert">{{ error }}</p>{% endif %}
+  <div class="field"><label for="m-email">Email</label><input id="m-email" name="email" type="email" autocomplete="off" value="{{ form.email }}" required></div>
+  <div class="field"><label for="m-name">Name</label><input id="m-name" name="name" value="{{ form.name }}" maxlength="60" placeholder="e.g. Son"></div>
+  <fieldset class="field"><legend>Role</legend>
+    <label class="choice"><input type="radio" name="role" value="viewer"{% if form.role != "owner" %} checked{% endif %}> Viewer: can look and say "I'm checking"</label>
+    <label class="choice"><input type="radio" name="role" value="owner"{% if form.role == "owner" %} checked{% endif %}> Owner: can also change settings, phones, contacts and members</label>
+  </fieldset>
+  <button class="btn" type="submit">Send invitation</button>
+</form>
+<p class="muted small">They get an email with a sign-in link that works once, for {{ hours }} hours. Getting alerts is separate: add them as a contact too.</p>
+{% else %}<p class="muted small">Only an owner can invite or remove members.</p>{% endif %}
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+{# Story E-5. The rules use these; nothing else decides when to alert. #}
+{% if notice %}<p class="banner green" role="status">{{ notice }}</p>{% endif %}
+{% if error %}<p class="banner red" role="alert">{{ error }}</p>{% endif %}
+{% if person.is_owner %}
+<form method="post" action="/people/{{ person.id }}/alert-times">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <fieldset class="field">
+    <legend>Waking hours</legend>
+    <p class="muted small">No-activity alerts are only sent between these times.</p>
+    <div class="grid2">
+      <div><label for="waking_from">From</label><input id="waking_from" name="waking_from" type="time" value="{{ timing.waking_from.strftime('%H:%M') }}" required></div>
+      <div><label for="waking_to">To</label><input id="waking_to" name="waking_to" type="time" value="{{ timing.waking_to.strftime('%H:%M') }}" required></div>
+    </div>
+  </fieldset>
+  <div class="field">
+    <label for="inactive_hours">Alert after this long with no activity</label>
+    <select id="inactive_hours" name="inactive_hours">{% for h in range(1, 13) %}<option value="{{ h }}"{% if h == timing.inactive_hours %} selected{% endif %}>{{ h }} hour{{ "" if h == 1 else "s" }}</option>{% endfor %}</select>
+  </div>
+  <div class="field">
+    <label for="silent_hours">Alert after this long with no data from the phone</label>
+    <select id="silent_hours" name="silent_hours">{% for h in [1, 2, 3, 4, 6, 8, 12, 18, 24, 36, 48] %}<option value="{{ h }}"{% if h == timing.silent_hours %} selected{% endif %}>{{ h }} hour{{ "" if h == 1 else "s" }}</option>{% endfor %}</select>
+  </div>
+  <button class="btn" type="submit">Save</button>
+</form>
+{% else %}
+<div class="card">
+  <div class="row"><span>Waking hours</span><b>{{ timing.waking_from.strftime('%H:%M') }} to {{ timing.waking_to.strftime('%H:%M') }}</b></div>
+  <div class="row"><span>No activity for</span><b>{{ timing.inactive_hours }} h</b></div>
+  <div class="row"><span>No data from the phone for</span><b>{{ timing.silent_hours }} h</b></div>
+</div>
+<p class="muted small">Only an owner can change these.</p>
+{% endif %}
+{% endblock %}

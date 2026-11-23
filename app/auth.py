@@ -23,7 +23,7 @@ import re
 import secrets
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -147,12 +147,23 @@ def list_members(conn: Connection, household_id: uuid.UUID) -> list[Member]:
 # ---------------------------------------------------------------------------
 
 
-def create_signin_link(conn: Connection, user: User, now: datetime, settings: Settings) -> str:
-    """Create a one-time sign-in link for a user and return its URL (secret: email it, never log it)."""
+def create_signin_link(
+    conn: Connection, user: User, now: datetime, settings: Settings, lifetime: timedelta | None = None
+) -> str:
+    """Create a one-time sign-in link for a user and return its URL (secret: email it, never log it).
+
+    Args:
+        conn: Open connection; the caller commits.
+        user: Who the link signs in.
+        now: Current time (UTC).
+        settings: For the public URL and the normal lifetime.
+        lifetime: How long it works; default ``web.signin_link_minutes`` (invitations last longer).
+    """
     token = secrets.token_urlsafe(32)
+    expires = now + (lifetime or settings.web.signin_link_expiry)
     conn.execute(
         text("INSERT INTO signin_links (token_hash, user_id, expires_at) VALUES (:hash, :user, :expires)"),
-        {"hash": hash_token(token), "user": user.id, "expires": now + settings.web.signin_link_expiry},
+        {"hash": hash_token(token), "user": user.id, "expires": expires},
     )
     return f"{settings.server.public_url}/signin/link/{token}"
 
@@ -236,3 +247,24 @@ def end_session(conn: Connection, session_id: str) -> None:
 def csrf_matches(session: Session, given: str) -> bool:
     """Whether a form's CSRF token is this session's (compared in constant time)."""
     return hmac.compare_digest(given.encode(), session.csrf_token.encode())
+
+
+def rename_user(conn: Connection, user_id: uuid.UUID, display_name: str) -> None:
+    """Change how a user is shown to others, e.g. in "Daughter is checking".
+
+    Raises:
+        ValueError: If the name is empty or longer than 60 characters.
+    """
+    name = display_name.strip()
+    if not 1 <= len(name) <= 60:
+        raise ValueError("A name must be 1 to 60 characters.")
+    conn.execute(text("UPDATE users SET display_name = :name WHERE id = :id"), {"name": name, "id": user_id})
+
+
+def owner_count(conn: Connection, household_id: uuid.UUID) -> int:
+    """How many owners a household has (it must always keep at least one)."""
+    value = conn.execute(
+        text("SELECT count(*) FROM members WHERE household_id = :household AND role = 'owner'"),
+        {"household": household_id},
+    ).scalar()
+    return int(value or 0)

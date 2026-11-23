@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid2">
+  <div class="card"><div class="label">Steps</div><div class="num">{{ "{:,}".format(day.steps) }}</div></div>
+  <div class="card"><div class="label">Active hours</div><div class="num">{{ day.active_hours }}</div></div>
+</div>
+{% set is_today = label == "Today" %}{% include "_day_chart.html" %}
+{% endblock %}

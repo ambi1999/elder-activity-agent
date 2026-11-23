@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icon %}
+{% block content %}
+{# Stories C3-3 and D-3: connected phones and phones waiting for their first data. #}
+{% if notice %}<p class="banner green" role="status">{{ notice }}</p>{% endif %}
+{% if phones %}
+<ul class="list">
+  {% for ph in phones %}
+  {% set expired = ph.status == "pending" and ph.pending_expires_at and ph.pending_expires_at <= now %}
+  <li class="item">
+    {% if ph.status == "active" %}{{ icon.badge("green", "Connected") }}{% else %}{{ icon.badge("none", "Not connected") }}{% endif %}
+    <span class="grow"><b>{{ ph.name }}</b>
+      <small>{% if ph.status == "active" %}Connected · last sent data {{ ago(ph.last_seen_at, now) if ph.last_seen_at else "not yet" }}
+      {% elif expired %}The setup code expired before the phone connected. Remove it and add the phone again.
+      {% else %}Waiting for the phone to connect · code works until {{ when(ph.pending_expires_at, person.timezone, now) }}{% endif %}</small></span>
+    {% if person.is_owner %}
+    <form method="post" action="/people/{{ person.id }}/phones/{{ ph.id }}/remove">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn secondary small-btn" type="submit" aria-label="Remove {{ ph.name }}">Remove</button>
+    </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}<div class="card empty">No phone yet.</div>{% endif %}
+{% if person.is_owner %}
+<a class="btn" href="/people/{{ person.id }}/phones/add">Add a phone</a>
+<p class="muted small">Removing a phone stops it sending at once. The activity it already sent stays.</p>
+{% else %}<p class="muted small">Only an owner can add or remove phones.</p>{% endif %}
+{% endblock %}

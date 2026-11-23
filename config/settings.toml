@@ -116,3 +116,8 @@ signin_requests_per_hour_per_ip = 30
 
 # How often the care overview refreshes itself while open. Allowed: 15 to 600 seconds.
 overview_refresh_seconds = 60
+
+# How long the sign-in link in an invitation email works (once). Longer than a
+# normal sign-in link, because an invitation may not be read straight away.
+# Allowed: 1 to 168 hours.
+invite_link_hours = 72

@@ -8,6 +8,7 @@ Routes:
     POST /ingest          Sensor Logger uploads, until no test phone uses it (ADR 0014)
     Alert routes (check job, Telegram webhook, email links): see app/alert_routes.py
     The family and care web app (sign-in, people, alerts): see app/web.py
+    Managing a person (past days, phones, alert times, contacts, members): see app/web_manage.py
     GET  /static/...      the web app's stylesheet, script and icons
 """
 
@@ -26,7 +27,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
-from app import agent, alert_routes, db, devices, protocol_v1, rate_limit, sensor_logger, storage, web
+from app import agent, alert_routes, db, devices, protocol_v1, rate_limit, sensor_logger, storage, web, web_manage
 from app.brand import STATIC, contrast_problems, get_brand
 from app.limits import BodyTooLarge, MaxBodySizeMiddleware
 from app.problems import Problem, handle_problem
@@ -47,6 +48,8 @@ app = FastAPI(title="Elder Activity Agent", version=web.VERSION)
 app.add_middleware(MaxBodySizeMiddleware, max_bytes=settings.ingest.max_body_bytes)
 app.add_exception_handler(Problem, handle_problem)
 app.include_router(alert_routes.router)
+# web_manage first: its /people/add must match before web's /people/{person_id}.
+app.include_router(web_manage.router)
 app.include_router(web.router)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 

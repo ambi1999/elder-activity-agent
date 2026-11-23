@@ -16,6 +16,7 @@ def test_default_settings_are_valid():
     assert "location" not in settings.ingest.accepted_sensors
     assert settings.web.signin_link_expiry == timedelta(minutes=15)
     assert settings.web.session_length == timedelta(days=30)
+    assert settings.web.invite_link_expiry == timedelta(hours=72)
 
 
 def test_environment_overrides_the_file():

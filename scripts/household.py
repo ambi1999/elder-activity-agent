@@ -26,6 +26,7 @@ Web app sign-in (step D1, ADR 0025). Accounts are invite only while testing:
   ... household.py members --household HOUSEHOLD_ID
   ... household.py remove-member --household HOUSEHOLD_ID --email daughter@example.com
   ... household.py signin-link --email daughter@example.com
+  ... household.py user --email nurse@example.com
 
 signin-link prints a one-time sign-in link instead of emailing it: for testing
 while the email service can only send to your own address. Anyone with the
@@ -54,7 +55,7 @@ from sqlalchemy.engine import Connection
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # so "app" can be imported
 
-from app import alerts, auth, contacts, db, devices, households, rules  # noqa: E402
+from app import access, alerts, auth, contacts, db, devices, households, rules  # noqa: E402
 from app.messages import confirm_email  # noqa: E402
 from app.notifiers import TelegramNotifier  # noqa: E402
 from app.notifiers import build as build_notifiers  # noqa: E402
@@ -298,6 +299,24 @@ def _signin_link(args: argparse.Namespace) -> None:
     print("Treat it like a password: don't share, screenshot or paste it.")
 
 
+def _user(args: argparse.Namespace) -> None:
+    with db.get_engine().connect() as conn:
+        try:
+            user = auth.find_user(conn, auth.normalize_email(args.email))
+        except ValueError as err:
+            sys.exit(str(err))
+        if user is None:
+            sys.exit("No user with that email address.")
+        summary = access.user_summary(conn, user.id)
+    print(f"{user.display_name} <{user.email}>")
+    if not summary:
+        print("  not a member of any household yet")
+    for household, role, people in summary:
+        print(f"  {household!r} as {role}: {', '.join(people) or 'nobody yet'}")
+    total = sum(len(people) for _, _, people in summary)
+    print(f"Sees {total} {'person' if total == 1 else 'people'} in {len(summary)} household(s).")
+
+
 def _setup_telegram(_: argparse.Namespace) -> None:
     settings = get_settings()
     token, secret = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_WEBHOOK_SECRET")
@@ -387,6 +406,10 @@ def main() -> None:
     remove_member.add_argument("--household", required=True, help="the household ID shown by 'list'")
     remove_member.add_argument("--email", required=True, help="their sign-in address")
     remove_member.set_defaults(run=_remove_member)
+
+    who = commands.add_parser("user", help="show a user's households, roles and the people they see")
+    who.add_argument("--email", required=True, help="the user's sign-in address")
+    who.set_defaults(run=_user)
 
     link = commands.add_parser("signin-link", help="print a one-time sign-in link (for testing)")
     link.add_argument("--email", required=True, help="the user's sign-in address")

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+{# The setup code holds the phone's token, a secret: shown only on this page, once. app.js asks every few
+   seconds whether the phone has connected and says so in the live region. #}
+<div id="pairing" data-status="/people/{{ person.id }}/phones/{{ phone.device.id }}/status">
+  <ol class="steps">
+    <li>On {{ person.display_name }}'s phone, open <b>Sensor Logger</b>.</li>
+    <li>Go to <b>Settings › Connection › Scan setup QR code</b>.</li>
+    <li>Scan this code, then agree on the phone.</li>
+  </ol>
+  <div class="qr"><img src="{{ qr }}" alt="Setup code for {{ phone.device.name }}" width="260" height="260"></div>
+  <p class="banner none" role="status" aria-live="polite" id="pairing-state">Waiting for the phone to connect…</p>
+  <p class="muted small">The code works for {{ minutes }} minutes (until {{ expires }}) and is shown only once. Don't share or photograph it.</p>
+  <details><summary>Can't scan? Type these instead</summary>
+    <div class="card"><div class="label">Endpoint</div><div class="mono">{{ phone.provisioning.endpoint }}</div>
+    <div class="label">Token</div><div class="mono">{{ phone.provisioning.token }}</div></div>
+  </details>
+  <a class="btn secondary" href="/people/{{ person.id }}/phones">Done</a>
+</div>
+{% endblock %}

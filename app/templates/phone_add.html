@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<p>You'll get a code to scan on {{ person.display_name }}'s phone, in the Sensor Logger app.</p>
+<form method="post" action="/people/{{ person.id }}/phones/add" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="field">
+    <label for="name">Name for the phone</label>
+    <input id="name" name="name" value="{{ name }}" maxlength="100" required
+      {% if error %}aria-invalid="true" aria-describedby="name-error"{% endif %}>
+    {% if error %}<div class="error" id="name-error">{{ error }}</div>{% endif %}
+  </div>
+  <button class="btn" type="submit">Show the setup code</button>
+</form>
+{% endblock %}

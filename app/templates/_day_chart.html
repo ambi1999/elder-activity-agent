@@ -1,0 +1,18 @@
+{# Steps by hour for one day: a chart for sighted users and the same numbers as a table (story D-1, D-2). #}
+{% set top = [day.steps_by_hour | max, 1] | max %}
+<div class="card">
+  <b>Steps by hour{{ ', today' if is_today }}</b>
+  {# The chart is a picture for sighted users; the table below has the same numbers for everyone. #}
+  <svg class="chart" viewBox="0 0 240 80" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    {% for n in day.steps_by_hour %}{% set h = (n / top * 76) if n else 0 %}<rect x="{{ loop.index0 * 10 + 1 }}" y="{{ 78 - h }}" width="8" height="{{ h + 2 }}" rx="1"/>{% endfor %}
+  </svg>
+  <div class="axis" aria-hidden="true"><span>12 am</span><span>6 am</span><span>12 pm</span><span>6 pm</span><span>12 am</span></div>
+  <details><summary>Show as a table</summary>
+    {% if day.steps %}
+    <table><caption class="sr-only">Steps by hour</caption>
+      <thead><tr><th scope="col">Hour</th><th scope="col">Steps</th></tr></thead>
+      <tbody>{% for hour in range(24) if day.steps_by_hour[hour] %}<tr><td>{{ "%02d:00" | format(hour) }}</td><td>{{ day.steps_by_hour[hour] }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p>No steps recorded{{ ' today yet' if is_today }}.</p>{% endif %}
+  </details>
+</div>
