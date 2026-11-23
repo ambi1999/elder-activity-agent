@@ -8,6 +8,10 @@ and a phone connected. Run from the project folder; it uses DATABASE_URL from
   uv run --env-file .env python scripts/household.py add-phone --person PERSON_ID --name "Mum's phone"
   uv run --env-file .env python scripts/household.py list
   uv run --env-file .env python scripts/household.py revoke DEVICE_ID
+  uv run --env-file .env python scripts/household.py delete HOUSEHOLD_ID
+
+Replace PERSON_ID, DEVICE_ID and HOUSEHOLD_ID with the IDs that 'create' and
+'list' print.
 
 add-phone prints the setup QR code in the terminal, once. Scan it with the
 logger app (Settings > Connection > Scan setup QR code); the phone's owner then
@@ -106,6 +110,23 @@ def _revoke(args: argparse.Namespace) -> None:
     print("Revoked: the phone's token no longer works." if revoked else "No pending or active device with that ID.")
 
 
+def _delete(args: argparse.Namespace) -> None:
+    household_id = _uuid(args.household_id, "household")
+    with db.get_engine().begin() as conn:
+        household = households.find_household(conn, household_id)
+        if household is None:
+            sys.exit("No household with that ID. Run 'list' to see them.")
+        counts = households.count_household_data(conn, household_id)
+        print(
+            f"This permanently deletes {household.name!r}: {counts['people']} person(s), "
+            f"{counts['phones']} phone(s) and {counts['data_rows']} stored data row(s)."
+        )
+        if not args.yes and input(f"Type the household name ({household.name}) to confirm: ") != household.name:
+            sys.exit("Not deleted.")
+        households.delete_household(conn, household_id)
+    print("Deleted.")
+
+
 def main() -> None:
     """Parse the command line and run the chosen command."""
     parser = argparse.ArgumentParser(description="Manage households and connect their phones.")
@@ -129,9 +150,13 @@ def main() -> None:
     revoke.add_argument("device_id", help="the device ID shown by 'list'")
     revoke.set_defaults(run=_revoke)
 
+    delete = commands.add_parser("delete", help="delete a household and everything about it")
+    delete.add_argument("household_id", help="the household ID shown by 'list'")
+    delete.add_argument("--yes", action="store_true", help="don't ask for confirmation (for scripts)")
+    delete.set_defaults(run=_delete)
+
     args = parser.parse_args()
-    engine = db.get_engine()
-    print(f"Database: {engine.url.host}/{engine.url.database}")
+    print(f"Database: {db.describe(db.get_engine())}")
     args.run(args)
 
 

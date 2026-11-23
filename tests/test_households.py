@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import text
 
 from app import devices, households
 from app.settings import load_settings
@@ -83,3 +84,38 @@ def test_find_person(migrated_db):
     with migrated_db.connect() as conn:
         assert households.find_person(conn, person.id) == person
         assert households.find_person(conn, uuid.uuid4()) is None
+
+
+def test_delete_household_removes_people_phones_and_data(migrated_db):
+    household, person = setup_household(migrated_db)
+    with migrated_db.begin() as conn:
+        phone = households.add_phone(conn, person, "Mum's phone", NOW, load_settings(environ={}))
+        conn.execute(
+            text(
+                "INSERT INTO step_readings (device_id, session_id, recorded_at, steps_total) VALUES (:d, 's', now(), 5)"
+            ),
+            {"d": phone.device.id},
+        )
+        assert households.count_household_data(conn, household.id) == {"people": 1, "phones": 1, "data_rows": 1}
+
+        assert households.delete_household(conn, household.id) is True
+
+    with migrated_db.connect() as conn:
+        assert households.find_household(conn, household.id) is None
+        assert households.find_person(conn, person.id) is None
+        assert devices.find_device(conn, phone.provisioning["token"], NOW) is None
+        assert conn.execute(text("SELECT count(*) FROM step_readings")).scalar() == 0
+
+
+def test_deleting_one_household_leaves_others(migrated_db):
+    first, _ = setup_household(migrated_db)
+    second, _ = setup_household(migrated_db)
+    with migrated_db.begin() as conn:
+        households.delete_household(conn, first.id)
+    with migrated_db.connect() as conn:
+        assert households.find_household(conn, second.id) == second
+
+
+def test_deleting_an_unknown_household_reports_it(migrated_db):
+    with migrated_db.begin() as conn:
+        assert households.delete_household(conn, uuid.uuid4()) is False

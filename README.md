@@ -73,7 +73,10 @@ uv run --env-file .env python scripts/household.py create --name "Family 1" --pe
 uv run --env-file .env python scripts/household.py add-phone --person PERSON_ID --name "Mum's phone"
 uv run --env-file .env python scripts/household.py list
 uv run --env-file .env python scripts/household.py revoke DEVICE_ID
+uv run --env-file .env python scripts/household.py delete HOUSEHOLD_ID
 ```
+
+Replace `PERSON_ID`, `DEVICE_ID` and `HOUSEHOLD_ID` with the IDs that `create` and `list` print. `delete` shows what will be removed and asks you to type the household's name: it permanently deletes the household's people, phones (their tokens stop working) and all their stored data.
 
 `add-phone` prints the setup QR code once, in the terminal: scan it in phone-sensor-logger (Settings > Connection > Scan setup QR code), and the phone's owner agrees on its consent screen. The code holds the device token, so don't screenshot or share it. It works for `pairing.pending_token_expiry_minutes` (default 30) unless the phone's first data arrives sooner; after that the phone is active. Only a hash of the token is stored.
 
