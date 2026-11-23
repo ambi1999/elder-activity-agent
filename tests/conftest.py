@@ -48,7 +48,10 @@ def migrated_db(alembic_cfg, test_db_url, monkeypatch):
     engine = db.get_engine()
     with engine.begin() as conn:
         conn.execute(
-            text("TRUNCATE households, people, devices, ingested_batches, step_readings, minute_summary, device_events")
+            text(
+                "TRUNCATE households, people, devices, ingested_batches, step_readings, minute_summary, device_events, "
+                "alert_contacts, alert_settings, alerts, alert_deliveries"
+            )
         )
     yield engine
     db.reset_engine()

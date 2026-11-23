@@ -63,6 +63,10 @@ Tests never touch the production database: they use `TEST_DATABASE_URL` and refu
 | `DATABASE_URL` | Neon connection string (direct, not pooled) |
 | `TEST_DATABASE_URL` | Local Docker database for tests |
 | `DEVICE_TOKEN` | Optional; a phone's token, for `scripts/check_token.py` |
+| `JOBS_TOKEN` | Required on `/jobs/check-alerts`; same value as the GitHub secret `JOBS_TOKEN` |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | Telegram alerts (empty: logged only) |
+| `RESEND_API_KEY` | Email alerts (empty: logged only) |
+| `PHONE_TOKEN` | Optional; a phone's token, for `scripts/simulate_phone.py` |
 
 ## Households and phones
 
@@ -90,6 +94,40 @@ uv run --env-file .env python scripts/register_device.py revoke DEVICE_ID
 
 `add` prints the device's token once; only a SHA-256 hash is stored. Put the token in the phone app's `Authorization` header.
 
+## Alerts
+
+The rules decide, the LLM only explains ([ADR 0026](docs/adr/0026-rules-decide-llm-explains.md)):
+
+- **No activity:** no steps, screen use or walking for `inactive_hours` (default 4) during waking hours (default 08:00–21:00, the person's time), while the phone is still sending.
+- **Phone silent:** no data for `silent_hours` (default 6), worded as a phone problem.
+
+Each alert goes to the household's confirmed contacts by Telegram (with an "I'm checking" button) or email (with an "I'm checking" link), respecting each contact's quiet hours. It repeats every `resend_after_minutes` (default 60, at most `max_resends` times) until someone acknowledges it, and an "All clear" follows when activity resumes. The explanation comes from Gemini when it answers within `llm_timeout_seconds`, otherwise from a fixed template. Defaults are in `config/settings.toml` under `[alerts]`.
+
+A GitHub Actions schedule (`.github/workflows/check-alerts.yml`) calls `POST /jobs/check-alerts` every 5 minutes.
+
+**Contacts and settings** (until the web app, step D):
+
+```bash
+uv run --env-file .env python scripts/household.py add-contact --household HOUSEHOLD_ID --name Daughter --telegram
+uv run --env-file .env python scripts/household.py add-contact --household HOUSEHOLD_ID --name Son --email son@example.com
+uv run --env-file .env python scripts/household.py contacts --household HOUSEHOLD_ID
+uv run --env-file .env python scripts/household.py quiet-hours CONTACT_ID --from 22:00 --to 07:00
+uv run --env-file .env python scripts/household.py alert-settings --person PERSON_ID --waking 08:00-21:00 --inactive-hours 4
+```
+
+A Telegram contact opens the printed link and presses **Start**; an email contact opens the confirmation email's link and presses **Confirm**. Nothing is sent to a contact until then.
+
+**Trying it without the logger app:** add a phone (`add-phone`), put its token in `.env` as `PHONE_TOKEN`, then send simulated data:
+
+```bash
+uv run --env-file .env python scripts/simulate_phone.py quiet --hours 5    # activity 5 hours ago, nothing since
+uv run --env-file .env python scripts/simulate_phone.py active             # activity now: the alert clears
+```
+
+The next check (within 5 minutes, or press **Run workflow** on the `check-alerts` workflow) sends the alert. Outside the person's waking hours there is no inactivity alert; for a test at night, set `--waking 00:00-23:59` with `alert-settings`.
+
+Without `TELEGRAM_BOT_TOKEN` or `RESEND_API_KEY`, messages are written to the log instead of sent ("logged only"), so everything works before the accounts exist.
+
 ## Delivery pipeline
 
 1. Every change goes through a pull request; `main` is protected.
@@ -109,7 +147,7 @@ Full plan: [docs/ROADMAP.md](docs/ROADMAP.md). User stories: [docs/backlog/worki
 - [x] Phone app: phone-sensor-logger, a separate product in a private repository (ADR 0023)
 - [x] **Step A:** foundations (typed settings, ruff, mypy), `POST /v1/readings` for the logger's protocol v1, households and QR pairing by script
 - [ ] **Step B (logger):** connect by QR with consent, uploads
-- [ ] **Step C:** inactivity and phone-silent alerts by Telegram and email (**working prototype**)
+- [x] **Step C:** inactivity and phone-silent alerts by Telegram and email (**working prototype**, tried with simulated phone data until logger step B)
 - [ ] **Step D:** family web app: sign-in, today and past days, add phone, contacts; brand from configuration
 - [ ] **Backend SRS**, written from what was built
 - [ ] **Phases 2–5:** activity features, personal baseline, agent summaries, evaluation

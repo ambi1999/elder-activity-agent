@@ -1,0 +1,37 @@
+# Runs the alert check every 5 minutes (ADR 0026).
+#
+# The service has no background worker on Render's free plan, so this schedule
+# calls POST /jobs/check-alerts, which also wakes the service if it is asleep.
+# GitHub runs schedules on a best-effort basis: runs can be several minutes
+# late, and GitHub pauses schedules in repositories with no activity for 60
+# days. Accepted while testing; a real scheduler replaces this before real users.
+#
+# Needs repository secrets RENDER_SERVICE_URL (already used by deploy) and
+# JOBS_TOKEN (the same value as JOBS_TOKEN on Render).
+name: check-alerts
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: # "Run workflow" button, for trying it by hand
+
+permissions: {} # needs no access to the repository
+
+concurrency:
+  group: check-alerts
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run the alert check
+        env:
+          URL: ${{ secrets.RENDER_SERVICE_URL }}
+          TOKEN: ${{ secrets.JOBS_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "JOBS_TOKEN secret not set; skipping"; exit 0; fi
+          # Up to 2 minutes: a sleeping free-plan service takes a while to start.
+          curl --fail --silent --show-error --max-time 120 --retry 2 --retry-delay 10 \
+            -X POST -H "Authorization: Bearer $TOKEN" "$URL/jobs/check-alerts"

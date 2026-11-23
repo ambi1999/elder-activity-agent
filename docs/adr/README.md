@@ -38,7 +38,7 @@ This folder records the significant design decisions for the Elder Activity Agen
 | [0023](0023-phone-sensor-logger-as-data-source.md) | Receive data from phone-sensor-logger through its protocol v1, and keep the logger a separate product | Accepted (`/v1/readings` built in step A) |
 | [0024](0024-households-and-pairing.md) | Serve many households, and pair phones with the protocol v1 setup QR code | Accepted (data model and `scripts/household.py` built in step A; web pages in step D) |
 | [0025](0025-family-web-app.md) | Build the family interface as a server-rendered, accessible web app that works well on phones | Accepted (to be built in step D; branding from `config/brand.toml`) |
-| [0026](0026-rules-decide-llm-explains.md) | Let rules decide when to alert, let the LLM explain, and send alerts by email and Telegram | Accepted (to be built in step C) |
+| [0026](0026-rules-decide-llm-explains.md) | Let rules decide when to alert, let the LLM explain, and send alerts by email and Telegram | Accepted (built in step C; email through Resend) |
 | [0027](0027-python-version-policy.md) | Run one Python version everywhere, and upgrade it deliberately | Accepted |
 
 ## Template for new records

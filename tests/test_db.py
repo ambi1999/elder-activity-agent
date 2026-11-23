@@ -14,6 +14,10 @@ EXPECTED_TABLES = {
     "households",
     "people",
     "device_events",
+    "alert_contacts",
+    "alert_settings",
+    "alerts",
+    "alert_deliveries",
 }
 
 
@@ -39,7 +43,7 @@ def test_health_db_reports_schema_revision(migrated_db, monkeypatch):
     monkeypatch.delenv("APP_API_KEY", raising=False)
     response = client.get("/health/db")
     assert response.status_code == 200
-    assert response.json() == {"database": "ok", "schema_revision": "0002"}
+    assert response.json() == {"database": "ok", "schema_revision": "0003"}
 
 
 # ---------- no database needed ----------

@@ -11,12 +11,12 @@ Secrets are deliberately not settings: they stay in environment variables.
 import os
 import tomllib
 from collections.abc import Mapping
-from datetime import timedelta
+from datetime import time, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator
 
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / "config" / "settings.toml"
 
@@ -86,12 +86,48 @@ class IngestSettings(_Section):
         return value
 
 
+class AlertSettings(_Section):
+    """Defaults and timing for alerts (ADR 0026)."""
+
+    default_waking_from: time
+    default_waking_to: time
+    default_inactive_hours: int = Field(ge=1, le=12)
+    default_silent_hours: int = Field(ge=1, le=48)
+    resend_after_minutes: int = Field(ge=15, le=720)
+    max_resends: int = Field(ge=0, le=10)
+    link_expiry_minutes: int = Field(ge=5, le=1440)
+    llm_timeout_seconds: int = Field(ge=2, le=30)
+
+    @field_validator("default_waking_to")
+    @classmethod
+    def _after_waking_from(cls, value: time, info: ValidationInfo) -> time:
+        start = info.data.get("default_waking_from")
+        if start is not None and value <= start:
+            raise ValueError("must be later than default_waking_from (waking hours can't cross midnight)")
+        return value
+
+
+class TelegramSettings(_Section):
+    """The Telegram bot that sends alerts. Its token is the secret TELEGRAM_BOT_TOKEN."""
+
+    bot_username: str = Field(pattern=r"^([A-Za-z][A-Za-z0-9_]{3,31}[Bb][Oo][Tt])?$")
+
+
+class EmailSettings(_Section):
+    """Who alert emails come from. The Resend API key is the secret RESEND_API_KEY."""
+
+    from_address: str = Field(min_length=3, max_length=200, pattern=r"@")
+
+
 class Settings(_Section):
     """All settings, one attribute per section of config/settings.toml."""
 
     server: ServerSettings
     pairing: PairingSettings
     ingest: IngestSettings
+    alerts: AlertSettings
+    telegram: TelegramSettings
+    email: EmailSettings
 
 
 def load_settings(path: Path = DEFAULT_PATH, environ: Mapping[str, str] | None = None) -> Settings:

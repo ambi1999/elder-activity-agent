@@ -19,7 +19,7 @@ flowchart LR
 | ✅ Done | agent | Phase 0 and Phase 1 A–B: agent, CI/CD, Postgres, per-device tokens, idempotent batches, minute summaries, security baseline | Data from Sensor Logger stored | 0001–0022 |
 | ✅ **A** | agent | **Foundations:** typed settings (`config/settings.toml`, every setting commented with unit and range, including `pairing.pending_token_expiry_minutes`), ruff with docstring rules, mypy, pre-commit, docstrings on existing code, Python version policy. **Protocol v1:** `POST /v1/readings` with a vendored protocol and contract tests, Problem Details errors, per-device rate limiting, location ignored. **Households:** tables for households, people, devices (pending, active, revoked) and screen/activity events; `scripts/household.py` creates a household and person and prints the setup QR code in the terminal | The server accepts the logger's data | 0023, 0024, 0027 |
 | **B** | logger | Iteration 2 in one pull request: Keystore token, manual and QR setup, consent, uploads every interval, status, rejected token, remove connection; publisher name and logo from configuration | A phone uploads to the server | logger 0021 |
-| **C** | agent | Alert contact and settings tables; inactivity and phone-silent rules with per-person settings; alert lifecycle (open, acknowledged, resolved); email and Telegram notifiers; LLM explanation with a template fallback; `/jobs/check-alerts` on a GitHub Actions schedule; contacts added and Telegram linked with `household.py` | **Working prototype:** leave the phone still and a message arrives | 0026 |
+| ✅ **C** | agent | Alert contact and settings tables; inactivity and phone-silent rules with per-person settings; alert lifecycle (open, acknowledged, resolved); email and Telegram notifiers; LLM explanation with a template fallback; `/jobs/check-alerts` on a GitHub Actions schedule; contacts added and Telegram linked with `household.py`; `scripts/simulate_phone.py` to try alerts without the logger app | **Working prototype:** leave the phone still and a message arrives | 0026 |
 | **D** | agent | Family web app: email sign-in, sessions, CSRF, household isolation tests, Today and past days, Add phone (QR), devices, contacts, alert settings, members; brand from `config/brand.toml`; PWA; axe-core and Lighthouse in CI | A family can use it without the developer | 0024, 0025 |
 | Backend SRS | agent | Requirements written from what steps A–D built, with traceability like the logger's | Reviewable specification | |
 | Phase 2 | agent | Daily activity features (wake time, active minutes, longest inactive period) | | |
@@ -27,6 +27,8 @@ flowchart LR
 | Phase 4 | agent | Daily summaries; family members ask questions about the day | | 0004, 0005, 0017 |
 | Phase 5 | both | Scenario testing of alerts, monitoring, retention jobs, test distribution to a family | | 0028 |
 | Before real users | agent | Legal review, privacy policy, Australian region, least-privilege database logins, row-level security | | 0019, 0022 |
+
+**Order (changed 2026-11-23):** all agent work first (A, C, D, then the SRS), then logger step B, then Phases 2–5. Alerts are tried before the logger app exists with `scripts/simulate_phone.py`, which sends protocol v1 batches with a real device token; the first end-to-end test with a real phone follows step B.
 
 ADR 0028 (test distribution) is reserved for the step that makes that decision.
 
