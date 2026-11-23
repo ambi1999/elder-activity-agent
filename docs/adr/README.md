@@ -40,6 +40,7 @@ This folder records the significant design decisions for the Elder Activity Agen
 | [0025](0025-family-web-app.md) | Build the family interface as a server-rendered, accessible web app that works well on phones | Accepted (to be built in step D; branding from `config/brand.toml`) |
 | [0026](0026-rules-decide-llm-explains.md) | Let rules decide when to alert, let the LLM explain, and send alerts by email and Telegram | Accepted (built in step C; email through Resend) |
 | [0027](0027-python-version-policy.md) | Run one Python version everywhere, and upgrade it deliberately | Accepted |
+| [0028](0028-access-by-person-and-care-overview.md) | Give each signed-in user a set of people, with a care overview first | Accepted (to be built in step D) |
 
 ## Template for new records
 
