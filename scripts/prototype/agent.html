@@ -1,0 +1,21 @@
+<a class="skip" href="#main">Skip to content</a>
+<button type="button" class="protofab" id="protofab" aria-expanded="false" aria-controls="protobar" aria-label="Prototype controls" title="Prototype controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="17" r="2" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+<div class="proto" id="protobar" role="region" aria-label="Prototype controls">
+  <span class="tag">Prototype · fictional data</span>
+  <button type="button" id="tourbtn">Guided tour</button>
+  <label>Signed in as <select id="persona"><option value="nurse">Nurse (10 people)</option><option value="daughter">Daughter (Mum)</option></select></label>
+  <label class="framecontrol"><input type="checkbox" id="frame"> Phone frame</label>
+  <details class="simul"><summary>Simulate…</summary><div class="pop">
+    <button type="button" data-action="sim-resolve-mine">Someone is active again (an alert closes)</button>
+    <button type="button" data-action="sim-new">A new alert opens</button>
+    <button type="button" data-action="reset">Start again (reset data)</button></div></details>
+  <button type="button" class="closeproto" id="closeproto">Close</button>
+</div>
+<div class="tour" id="tour" hidden>
+  <p id="tourtext"></p>
+  <button type="button" id="tprev">‹ Previous</button>
+  <button type="button" id="tnext">Next ›</button>
+</div>
+<div class="stagewrap"><div class="device" id="app"></div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="sr-only" aria-live="polite" id="live"></div>

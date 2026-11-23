@@ -8,7 +8,7 @@ User stories for the [roadmap](../ROADMAP.md)'s fast path. Story IDs keep their 
 |---|---|
 | A | C2b-1, C2b-2, A-1, A-2, C3-3 (command-line version) |
 | C | E-1 to E-5 (settings by script; acknowledging from the message), C-1 |
-| D | C3-1 to C3-6, D-1 to D-4, E-3 and E-5 in the web app |
+| D | C3-1 to C3-6, D-1 to D-5, E-3 and E-5 in the web app |
 
 ## Roles
 
@@ -17,6 +17,7 @@ User stories for the [roadmap](../ROADMAP.md)'s fast path. Story IDs keep their 
 | **Monitored person** | The older person carrying the phone | The phone (phone-sensor-logger); receives nothing from this service |
 | **Owner** | A family member who manages the household | Web app: everything |
 | **Viewer** | Another family member or a carer | Web app: views and acknowledges alerts |
+| **Nurse or carer** | Looks after several people, each in their own household (ADR 0028) | Web app: the care overview first; an owner or viewer of each household |
 | **Alert contact** | Anyone who should be told (often a member) | Email or Telegram |
 | **Developer** | Builds and runs the service | Command line, CI, hosting |
 
@@ -123,6 +124,16 @@ flowchart LR
 ### D-2 Look back at past days
 *As an* owner or viewer, *I want* to see each past day's activity by hour, *so that* I can spot changes in routine.
 - Given 14 days of data, when I choose a day, then its hourly activity and totals are shown, with a text alternative to the chart.
+
+### D-5 See who needs attention first (care overview)
+*As a* nurse looking after several people, *I want* a first screen listing everyone with a red, amber or green status, those needing attention at the top, *so that* I know in seconds who to check, and can tap a person for details.
+- Given I can see 10 people, two with open alerts and one whose phone has stopped sending, when I sign in, then the overview lists the two first ("Needs attention", red), then the one ("Phone not sending", amber), then the others ("All OK", green, with the last activity time).
+- Given any status, when it is shown, then it has an icon and words as well as colour, and axe-core finds no violations.
+- Given an alert someone has acknowledged, when the overview shows it, then it stays red and says who is checking.
+- Given I tap a person, when the page opens, then it is their Today page.
+- Given a user who can see only one person, when they sign in, then they go straight to that person's Today page.
+- Given a person outside my households, when I request any of their pages, then the response is 404.
+- Given the overview is open, when an alert opens or resolves, then it updates within a minute without reloading, and a screen reader announces the change in the summary.
 
 ### D-4 Brand from configuration
 *As the* company running the service, *I want* the company name, logo, product name and colours to come from `config/brand.toml`, *so that* they can be changed without touching code ([design.md](../design.md)).
