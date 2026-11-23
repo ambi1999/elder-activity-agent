@@ -2,7 +2,7 @@
 
 A living document: update it in the same pull request as any change that affects what the system stores, who can reach it, or how it is deployed.
 
-**Last reviewed:** 2026-11-23 (step A built) (working-version plan added: rows marked 🟡 with a step are designed in ADRs 0023 to 0026 and built in that step of the [roadmap](../ROADMAP.md))
+**Last reviewed:** 2026-11-23 (step C built) (working-version plan added: rows marked 🟡 with a step are designed in ADRs 0023 to 0026 and built in that step of the [roadmap](../ROADMAP.md))
 
 ## 1. What we are protecting
 
@@ -60,8 +60,10 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Photographed setup QR code used to send data | Pending tokens expire unless a first batch arrives within `pairing.pending_token_expiry_minutes` (server setting, default 30, allowed 5 to 1440); the owner sees "Phone connected" and can revoke; QR shown once | ✅ (`scripts/household.py`; web page in step D) |
 | Someone signs in as a family member | Email magic links: single-use, 15 minutes, stored as hashes, rate-limited per address and IP; same response for unknown addresses | 🟡 (step D, ADR 0025) |
 | Stolen session cookie | `Secure`, `HttpOnly`, `SameSite=Lax`, `__Host-` cookie; server-side sessions that sign-out and owners can revoke; HTTPS only (HSTS) | 🟡 (step D) |
-| Fake alerts or sign-in emails (phishing) | Messages never ask for anything; links go only to the service's own domain; SPF, DKIM and DMARC on the sending domain | 🟡 (step C) |
-| Someone links their Telegram chat as a contact | One-time Telegram start codes created by an owner, expiring after 30 minutes | 🟡 (step C) |
+| Fake alerts or sign-in emails (phishing) | Messages never ask for anything; links go only to the service's own domain | ✅ (step C) |
+| Fake alerts from a lookalike sender | SPF, DKIM and DMARC on our own sending domain (Resend's test sender until then) | 🟡 (before real users) |
+| Someone links their Telegram chat as a contact | One-time Telegram start codes (hashed, expire after `alerts.link_expiry_minutes`); a contact gets nothing until confirmed; the webhook only accepts calls carrying `TELEGRAM_WEBHOOK_SECRET` | ✅ (step C) |
+| Someone acknowledges an alert they shouldn't | Email "I'm checking" links are one-time tokens per message (hashed), opening a page whose button acknowledges (email scanners don't); Telegram buttons only work from a confirmed contact's chat in the alert's household (tested) | ✅ (step C) |
 | Developer account takeover | Two-factor authentication (ideally passkeys) on GitHub, Render, Neon and Google | 🟡 (manual setting, ADR 0019) |
 
 ### Tampering (changing data or code)
@@ -73,7 +75,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Replayed batches double-count data | Batch IDs recorded; repeats skipped | ✅ |
 | Cross-site request forgery changes settings or contacts | CSRF token on every form and HTMX request; `SameSite=Lax` cookies | 🟡 (step D) |
 | Injected script in the web app | Jinja2 auto-escaping; Content Security Policy allowing only the app's own scripts; no inline scripts | 🟡 (step D) |
-| Alert check triggered by strangers | `/jobs/check-alerts` needs `JOBS_TOKEN`; repeated calls are harmless (open alerts aren't resent) | 🟡 (step C) |
+| Alert check triggered by strangers | `/jobs/check-alerts` needs `JOBS_TOKEN` (constant-time check); repeated calls are harmless (open alerts aren't resent) | ✅ (step C) |
 | Vulnerable or malicious dependency | Lockfile, Dependabot, `pip-audit` gate before deploy, CodeQL | ✅ (this PR) |
 
 ### Repudiation (denying actions)
@@ -82,7 +84,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 |---|---|---|
 | Can't tell which device sent data | Every batch is recorded with its device and time; one log line per batch | ✅ |
 | No record of admin actions | Device creation and revocation are timestamped in the database | ✅ |
-| Family member denies changing settings or acknowledging an alert | Audit log of member actions (who, what, when) per household; acknowledgements record the member | 🟡 (steps C, D) |
+| Family member denies changing settings or acknowledging an alert | Acknowledgements record who and when, and every message sent is recorded in `alert_deliveries` (step C ✅); audit log of member actions in the web app | 🟡 (step D) |
 
 ### Information disclosure (data leaking)
 
@@ -95,9 +97,9 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Personal data sent to the LLM or used for training | Only anonymised summaries; Gemini paid tier before real users | 🟡 (ADR 0005) |
 | One household sees another's data | All household data read through one scoped-query module; tests check every route returns 404 for another household's ids; row-level security before real users | 🟡 (step D, ADR 0024) |
 | Former member keeps access | Owners remove members, which revokes their sessions | 🟡 (step D) |
-| Alerts reveal too much in email or Telegram | Messages say what the rule saw and when, never location or raw data; details only in the signed-in app | 🟡 (step C, ADR 0026) |
+| Alerts reveal too much in email or Telegram | Messages say what the rule saw and when, never location or raw data | ✅ (step C, ADR 0026) |
 | Location shown or stored | Phones use the logger's `activity` profile; location readings are ignored and never stored, and `ingest.accepted_sensors` can't include it (tested) | ✅ (ADR 0023; no location view in step D either) |
-| Personal data in LLM prompts | Prompts contain summaries only, no names, emails or chat ids | 🟡 (step C) |
+| Personal data in LLM prompts | Prompts contain summaries only, no names, emails or chat ids (tested) | ✅ (step C) |
 | Over-collection | No GPS, microphone or camera; summaries instead of raw data | ✅ |
 | Data kept forever, or stored overseas | Retention and residency policy | 🟡 (ADR 0022, proposed) |
 
@@ -110,7 +112,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Strangers keep the database awake (cost) | `/health` never touches the database; `/health/db` needs the API key | ✅ |
 | Strangers use up Gemini quota | `/chat` needs the API key | ✅ |
 | Sign-in link requests used to flood someone's inbox or our email quota | Rate limits per address and per IP | 🟡 (step D) |
-| Alert storms when many phones go silent at once (an outage on our side) | Phone-silent alerts paused when most devices stop at the same time; a single developer alert instead | 🟡 (step C) |
+| Alert storms when many phones go silent at once (an outage on our side) | Phone-silent alerts paused when most devices stop at the same time; a single developer alert instead. Not needed at a handful of households | 🟡 (before real users) |
 
 ### Elevation of privilege
 
@@ -142,6 +144,8 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 4. If it was committed, rotating is mandatory: deleting the commit doesn't help.
 
 **A phone is lost:** revoke it (web app Devices page, or `register_device.py revoke`), then add the replacement.
+
+**Alerts stop arriving:** check the `check-alerts` workflow's runs in GitHub Actions, then the service log for `check-alerts` lines and `Alert check failed`; a contact who gets nothing may be unconfirmed or in quiet hours (`household.py contacts`).
 
 **A family asks for their data to be deleted:** `scripts/household.py delete HOUSEHOLD_ID` removes the household, its people, phones (tokens stop working) and all their readings, events and summaries.
 

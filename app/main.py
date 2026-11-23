@@ -6,6 +6,7 @@ Routes:
     POST /chat            ask the agent (needs APP_API_KEY)
     POST /v1/readings     phone-sensor-logger protocol v1 uploads (ADR 0023)
     POST /ingest          Sensor Logger uploads, until no test phone uses it (ADR 0014)
+    Alert routes (check job, Telegram webhook, email links): see app/alert_routes.py
 """
 
 import hmac
@@ -22,7 +23,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
-from app import agent, db, devices, protocol_v1, rate_limit, sensor_logger, storage
+from app import agent, alert_routes, db, devices, protocol_v1, rate_limit, sensor_logger, storage
 from app.limits import BodyTooLarge, MaxBodySizeMiddleware
 from app.problems import Problem, handle_problem
 from app.settings import Settings, get_settings
@@ -36,6 +37,7 @@ settings = get_settings()
 app = FastAPI(title="Elder Activity Agent", version="0.5.0")
 app.add_middleware(MaxBodySizeMiddleware, max_bytes=settings.ingest.max_body_bytes)
 app.add_exception_handler(Problem, handle_problem)
+app.include_router(alert_routes.router)
 
 
 class ChatRequest(BaseModel):

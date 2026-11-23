@@ -56,3 +56,44 @@ batches_per_minute_per_device = 30
 # stored. Location can never be listed here (ADR 0022).
 # Allowed: any of steps_total, light_lux, battery, screen, activity, motion.
 accepted_sensors = ["steps_total", "light_lux", "battery", "screen", "activity", "motion"]
+
+[alerts]
+# Defaults for a new person's alert settings (ADR 0026). Each household can
+# change them later (scripts/household.py alert-settings; the web app in step D).
+# Waking hours, as local times in the person's timezone ("HH:MM", from before to).
+default_waking_from = "08:00"
+default_waking_to = "21:00"
+
+# Alert if there has been no activity (steps, screen use, walking) for this
+# long during waking hours, while the phone is still sending. Allowed: 1 to 12.
+default_inactive_hours = 4
+
+# Alert if the phone has sent nothing for this long, worded as a phone
+# problem, not a concern about the person. Allowed: 1 to 48.
+default_silent_hours = 6
+
+# Repeat an alert nobody has acknowledged after this many minutes, at most
+# max_resends times. Allowed: 15 to 720 minutes; 0 to 10 repeats.
+resend_after_minutes = 60
+max_resends = 2
+
+# How long one-time links (confirm an email address, link a Telegram chat)
+# work. Allowed: 5 to 1440 minutes.
+link_expiry_minutes = 30
+
+# The AI explanation must arrive within this time, or the fixed template text
+# is sent instead, so an alert is never held up by the AI. Allowed: 2 to 30 seconds.
+llm_timeout_seconds = 10
+
+[telegram]
+# Username of your Telegram bot, without "@" (created with @BotFather; not a
+# secret). Empty until the bot exists: Telegram contacts can't be linked yet.
+# Its token is the secret TELEGRAM_BOT_TOKEN, set only in the environment.
+bot_username = ""
+
+[email]
+# Sender of alert and confirmation emails. "onboarding@resend.dev" works for
+# testing (it can only send to your own Resend account's address); use an
+# address at your own verified domain for real use. The API key is the secret
+# RESEND_API_KEY, set only in the environment.
+from_address = "Elder Activity <onboarding@resend.dev>"

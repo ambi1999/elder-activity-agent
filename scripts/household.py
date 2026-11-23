@@ -10,8 +10,18 @@ and a phone connected. Run from the project folder; it uses DATABASE_URL from
   uv run --env-file .env python scripts/household.py revoke DEVICE_ID
   uv run --env-file .env python scripts/household.py delete HOUSEHOLD_ID
 
-Replace PERSON_ID, DEVICE_ID and HOUSEHOLD_ID with the IDs that 'create' and
-'list' print.
+Alerts (step C, ADR 0026):
+
+  ... household.py add-contact --household HOUSEHOLD_ID --name Daughter --telegram
+  ... household.py add-contact --household HOUSEHOLD_ID --name Son --email son@example.com
+  ... household.py contacts --household HOUSEHOLD_ID
+  ... household.py quiet-hours CONTACT_ID --from 22:00 --to 07:00     (or --off)
+  ... household.py remove-contact CONTACT_ID
+  ... household.py alert-settings --person PERSON_ID --waking 08:00-21:00 --inactive-hours 4 --silent-hours 6
+  ... household.py setup-telegram        (once, after creating the bot and setting its secrets)
+
+Replace PERSON_ID, DEVICE_ID, HOUSEHOLD_ID and CONTACT_ID with the IDs that
+'create', 'list' and 'contacts' print.
 
 add-phone prints the setup QR code in the terminal, once. Scan it with the
 logger app (Settings > Connection > Scan setup QR code); the phone's owner then
@@ -21,16 +31,21 @@ screenshot, print or share it; if it expires, run add-phone again.
 
 import argparse
 import json
+import os
 import sys
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from pathlib import Path
 
 import segno
+from sqlalchemy.engine import Connection
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # so "app" can be imported
 
-from app import db, devices, households  # noqa: E402
+from app import alerts, contacts, db, devices, households, rules  # noqa: E402
+from app.messages import confirm_email  # noqa: E402
+from app.notifiers import TelegramNotifier  # noqa: E402
+from app.notifiers import build as build_notifiers  # noqa: E402
 from app.settings import get_settings  # noqa: E402
 
 
@@ -127,6 +142,111 @@ def _delete(args: argparse.Namespace) -> None:
     print("Deleted.")
 
 
+def _time(value: str) -> time:
+    try:
+        return time.fromisoformat(value)
+    except ValueError:
+        sys.exit(f"{value!r} isn't a time like 07:30.")
+
+
+def _household(conn: Connection, value: str) -> households.Household:
+    household = households.find_household(conn, _uuid(value, "household"))
+    if household is None:
+        sys.exit("No household with that ID. Run 'list' to see them.")
+    return household
+
+
+def _add_contact(args: argparse.Namespace) -> None:
+    settings = get_settings()
+    channel = "telegram" if args.telegram else "email"
+    with db.get_engine().begin() as conn:
+        household = _household(conn, args.household)
+        try:
+            new = contacts.add_contact(
+                conn, household.id, args.name, channel, datetime.now(UTC), settings, email=args.email
+            )
+        except ValueError as err:
+            sys.exit(str(err))
+    minutes = settings.alerts.link_expiry_minutes
+    print(f"Contact {args.name!r} added to {household.name!r} (contact {new.contact.id}), not yet confirmed.")
+    if channel == "telegram":
+        print(f"\nSend {args.name} this link. They open it in Telegram and press Start (works for {minutes} minutes):")
+        print(f"  {new.link}")
+        return
+    sent = build_notifiers(settings)["email"].send(
+        new.contact.address or "", confirm_email(args.name, new.link, minutes)
+    )
+    print("A confirmation email has been sent." if sent else "The confirmation email could not be sent.")
+    if not os.getenv("RESEND_API_KEY"):
+        print(f"(Email isn't set up yet, so here is the link to open instead, valid {minutes} minutes:)\n  {new.link}")
+
+
+def _contacts(args: argparse.Namespace) -> None:
+    with db.get_engine().connect() as conn:
+        household = _household(conn, args.household)
+        found = contacts.list_contacts(conn, household.id)
+    print(f"Contacts of {household.name!r}:")
+    if not found:
+        print("  none yet; add one with 'add-contact'")
+    for c in found:
+        state = "confirmed" if c.confirmed_at else "waiting for confirmation"
+        quiet = f", quiet {c.quiet_from:%H:%M}-{c.quiet_to:%H:%M}" if c.quiet_from and c.quiet_to else ""
+        print(f"  {c.display_name!r} ({c.channel}, {state}{quiet})  contact {c.id}")
+
+
+def _quiet_hours(args: argparse.Namespace) -> None:
+    start, end = (None, None) if args.off else (_time(args.start), _time(args.end))
+    with db.get_engine().begin() as conn:
+        try:
+            done = contacts.set_quiet_hours(conn, _uuid(args.contact_id, "contact"), start, end)
+        except ValueError as err:
+            sys.exit(str(err))
+    print("Saved." if done else "No contact with that ID.")
+
+
+def _remove_contact(args: argparse.Namespace) -> None:
+    with db.get_engine().begin() as conn:
+        done = contacts.remove_contact(conn, _uuid(args.contact_id, "contact"))
+    print("Removed: they get no more messages." if done else "No contact with that ID.")
+
+
+def _alert_settings(args: argparse.Namespace) -> None:
+    settings = get_settings()
+    with db.get_engine().begin() as conn:
+        person = households.find_person(conn, _uuid(args.person, "person"))
+        if person is None:
+            sys.exit("No person with that ID. Run 'list' to see them.")
+        current = alerts.get_timing(conn, person.id, settings)
+        start, end = current.waking_from, current.waking_to
+        if args.waking:
+            first, _, second = args.waking.partition("-")
+            start, end = _time(first), _time(second)
+        timing = rules.AlertTiming(
+            start,
+            end,
+            args.inactive_hours or current.inactive_hours,
+            args.silent_hours or current.silent_hours,
+        )
+        try:
+            alerts.set_timing(conn, person.id, timing)
+        except ValueError as err:
+            sys.exit(str(err))
+    print(
+        f"{person.display_name}: waking {timing.waking_from:%H:%M}-{timing.waking_to:%H:%M}, alert after "
+        f"{timing.inactive_hours} h without activity or {timing.silent_hours} h without data."
+    )
+
+
+def _setup_telegram(_: argparse.Namespace) -> None:
+    settings = get_settings()
+    token, secret = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_WEBHOOK_SECRET")
+    if not (token and secret and settings.telegram.bot_username):
+        sys.exit("Set TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET in .env, and telegram.bot_username, first.")
+    url = f"{settings.server.public_url}/telegram/webhook"
+    ok = TelegramNotifier(token).set_webhook(url, secret)
+    print(f"Telegram will now send updates to {url}." if ok else "Telegram refused; check the token.")
+
+
 def main() -> None:
     """Parse the command line and run the chosen command."""
     parser = argparse.ArgumentParser(description="Manage households and connect their phones.")
@@ -155,7 +275,43 @@ def main() -> None:
     delete.add_argument("--yes", action="store_true", help="don't ask for confirmation (for scripts)")
     delete.set_defaults(run=_delete)
 
+    add_contact = commands.add_parser("add-contact", help="add an alert contact (email or Telegram)")
+    add_contact.add_argument("--household", required=True, help="the household ID shown by 'list'")
+    add_contact.add_argument("--name", required=True, help='how they are named in messages, e.g. "Daughter"')
+    how = add_contact.add_mutually_exclusive_group(required=True)
+    how.add_argument("--email", help="their email address")
+    how.add_argument("--telegram", action="store_true", help="link their Telegram chat")
+    add_contact.set_defaults(run=_add_contact)
+
+    show_contacts = commands.add_parser("contacts", help="list a household's alert contacts")
+    show_contacts.add_argument("--household", required=True, help="the household ID shown by 'list'")
+    show_contacts.set_defaults(run=_contacts)
+
+    quiet = commands.add_parser("quiet-hours", help="no messages to a contact between two times")
+    quiet.add_argument("contact_id", help="the contact ID shown by 'contacts'")
+    quiet.add_argument("--from", dest="start", help="start, e.g. 22:00")
+    quiet.add_argument("--to", dest="end", help="end, e.g. 07:00")
+    quiet.add_argument("--off", action="store_true", help="remove quiet hours")
+    quiet.set_defaults(run=_quiet_hours)
+
+    remove = commands.add_parser("remove-contact", help="stop sending alerts to a contact")
+    remove.add_argument("contact_id", help="the contact ID shown by 'contacts'")
+    remove.set_defaults(run=_remove_contact)
+
+    timing = commands.add_parser("alert-settings", help="waking hours and alert thresholds for a person")
+    timing.add_argument("--person", required=True, help="the person ID shown by 'list'")
+    timing.add_argument("--waking", help="waking hours, e.g. 08:00-21:00")
+    timing.add_argument("--inactive-hours", type=int, help="hours without activity before alerting (1-12)")
+    timing.add_argument("--silent-hours", type=int, help="hours without data before alerting (1-48)")
+    timing.set_defaults(run=_alert_settings)
+
+    commands.add_parser("setup-telegram", help="connect the Telegram bot to this service").set_defaults(
+        run=_setup_telegram
+    )
+
     args = parser.parse_args()
+    if args.command == "quiet-hours" and not args.off and not (args.start and args.end):
+        parser.error("quiet-hours needs --from and --to, or --off")
     print(f"Database: {db.describe(db.get_engine())}")
     args.run(args)
 
