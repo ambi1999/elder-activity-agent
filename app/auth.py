@@ -19,7 +19,6 @@ While testing, accounts are invite only: users are added with
 """
 
 import hmac
-import re
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -29,10 +28,10 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from app.devices import hash_token
+from app.emails import looks_like_email
 from app.settings import Settings
 
 ROLES = ("owner", "viewer")
-EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
 
 
 @dataclass(frozen=True)
@@ -67,7 +66,7 @@ def normalize_email(email: str) -> str:
         ValueError: If it doesn't look like an email address.
     """
     cleaned = email.strip().lower()
-    if len(cleaned) > 254 or not EMAIL.match(cleaned):
+    if not looks_like_email(cleaned):
         raise ValueError("Enter an email address like name@example.com.")
     return cleaned
 
