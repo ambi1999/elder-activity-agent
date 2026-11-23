@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icon %}
+{% block content %}
+{# One alert (story E-3). The rules decided; the explanation only explains (ADR 0026). #}
+{% set a = alert %}
+{% set level = "green" if a.status == "resolved" else ("amber" if a.rule == "phone_silent" else "red") %}
+{% if notice %}<p class="banner green" role="status">{{ notice }}</p>{% endif %}
+<div class="banner {{ level }}">
+  <b>{{ headline }}</b>
+  <p>Since {{ when(a.since, a.person.timezone, now) }} ·
+  {% if a.status == "open" %}Nobody has said they're checking yet.
+  {% elif a.status == "acknowledged" %}{{ "You're" if a.acknowledged_by == me.display_name else a.acknowledged_by ~ " is" }} checking.
+  {% else %}Closed.{% endif %}</p>
+</div>
+<div class="card">
+  <p>{{ a.explanation }}</p>
+  {% if a.explained_by == "llm" %}<p class="label">Written by the agent from activity summaries.</p>{% endif %}
+</div>
+{% if a.status == "open" %}
+<form method="post" action="/alerts/{{ a.id }}/ack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button class="btn" type="submit">I'm checking</button>
+</form>
+{% endif %}
+<ul class="list"><li><a class="item" href="/people/{{ a.person.id }}"><span class="grow">{{ a.person.display_name }}'s day</span>{{ icon.chev() }}</a></li></ul>
+<h2>What happened</h2>
+<ul class="timeline">
+  <li>{{ when(a.opened_at, a.person.timezone, now) | capitalize }}: alert opened and sent to the household's contacts</li>
+  {% if a.acknowledged_at %}<li>{{ when(a.acknowledged_at, a.person.timezone, now) | capitalize }}: {{ a.acknowledged_by }} said they're checking</li>{% endif %}
+  {% if a.resolved_at %}<li>{{ when(a.resolved_at, a.person.timezone, now) | capitalize }}: {{ "activity resumed" if a.rule == "inactivity" else "the phone sent data again" }}; alert closed</li>{% endif %}
+</ul>
+{% endblock %}

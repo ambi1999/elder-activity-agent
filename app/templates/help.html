@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icon %}
+{% block content %}
+<div class="card">{{ icon.badge("red", "Needs attention", true) }}<p>The phone has shown no steps, screen use or walking for longer than usual during waking hours. Someone should check.</p></div>
+<div class="card">{{ icon.badge("amber", "Phone not sending", true) }}<p>The phone has stopped sending data. It may be switched off, flat or offline. This is about the phone, not the person.</p></div>
+<div class="card">{{ icon.badge("green", "All OK", true) }}<p>Recent activity; nothing to do.</p></div>
+<div class="card">{{ icon.badge("none", "No phone yet", true) }}<p>No phone is connected for this person, so there is nothing to show yet.</p></div>
+<p class="muted">This is a wellness aid, not a medical device or an emergency service. In an emergency, call 000.</p>
+{% endblock %}

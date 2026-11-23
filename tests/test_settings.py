@@ -14,6 +14,8 @@ def test_default_settings_are_valid():
     assert settings.pairing.device_profile == "activity"
     assert settings.server.readings_endpoint.endswith("/v1/readings")
     assert "location" not in settings.ingest.accepted_sensors
+    assert settings.web.signin_link_expiry == timedelta(minutes=15)
+    assert settings.web.session_length == timedelta(days=30)
 
 
 def test_environment_overrides_the_file():
@@ -36,6 +38,8 @@ def test_sensor_list_can_come_from_the_environment():
         ({"INGEST__MAX_ITEMS_PER_BATCH": "100"}, "ingest.max_items_per_batch"),
         ({"INGEST__ACCEPTED_SENSORS": "steps_total,location"}, "ingest.accepted_sensors"),
         ({"INGEST__ACCEPTED_SENSORS": "heart_rate"}, "ingest.accepted_sensors"),
+        ({"WEB__SIGNIN_LINK_MINUTES": "2"}, "web.signin_link_minutes"),
+        ({"WEB__SESSION_DAYS": "365"}, "web.session_days"),
     ],
 )
 def test_invalid_values_stop_the_app_and_name_the_setting(env, named):

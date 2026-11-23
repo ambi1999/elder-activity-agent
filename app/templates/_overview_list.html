@@ -1,0 +1,23 @@
+{% import "_icons.html" as icon %}
+{% set labels = {"red": "need attention", "amber": "phone not sending", "green": "all OK", "none": "no phone yet"} %}
+{% set headings = {"red": "Needs attention", "amber": "Phone not sending", "green": "All OK", "none": "No phone yet"} %}
+{% if not statuses %}
+<div class="card empty">You don't look after anyone yet. Ask the owner of a household to add you.</div>
+{% else %}
+{% set summary = [] %}{% for level in ["red", "amber", "green", "none"] if counts[level] %}{% set _ = summary.append(counts[level] ~ " " ~ labels[level]) %}{% endfor %}
+<p class="chips" data-summary="{{ summary | join(', ') }}">
+  {% for level in ["red", "amber", "green", "none"] if counts[level] %}<span class="chip {{ level }}">{{ counts[level] }} {{ labels[level] }}</span>{% endfor %}
+</p>
+{% for level in ["red", "amber", "green", "none"] if counts[level] %}
+<h2>{{ headings[level] }}</h2>
+<ul class="peoplegrid">
+  {% for s in statuses if s.level == level %}
+  <li><a class="item person {{ level }}" href="/people/{{ s.person.id }}">
+    {{ icon.badge(level, s.words) }}
+    <span class="grow"><b>{{ s.person.display_name }}</b><small>{{ s.detail }}</small></span>
+    {{ icon.chev() }}
+  </a></li>
+  {% endfor %}
+</ul>
+{% endfor %}
+{% endif %}

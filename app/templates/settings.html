@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icon %}
+{% block content %}
+<h2>You</h2>
+<ul class="list">
+  <li class="item"><span class="grow"><b>{{ me.display_name }}</b><small>{{ me.email }} · you sign in with this address</small></span></li>
+</ul>
+<h2>{{ "People you look after" if people | length != 1 else "The person you look after" }}</h2>
+{% if people %}
+<ul class="list">
+  {% for p in people %}<li><a class="item" href="/people/{{ p.id }}"><span class="grow"><b>{{ p.display_name }}</b><small>{{ p.household_name }} · {{ "owner" if p.is_owner else "viewer" }}</small></span>{{ icon.chev() }}</a></li>{% endfor %}
+</ul>
+{% else %}<div class="card empty">Nobody yet.</div>{% endif %}
+<h2>App</h2>
+<ul class="list">
+  <li><a class="item" href="/help"><span class="grow">Help</span>{{ icon.chev() }}</a></li>
+  <li><a class="item" href="/about"><span class="grow">About</span>{{ icon.chev() }}</a></li>
+</ul>
+<form method="post" action="/signout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn secondary" type="submit">Sign out</button></form>
+{% endblock %}

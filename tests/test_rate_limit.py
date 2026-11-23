@@ -1,4 +1,4 @@
-"""Per-device upload limits (ADR 0020), without a database."""
+"""Request limits: uploads per device (ADR 0020) and sign-in requests (ADR 0025), without a database."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -32,3 +32,10 @@ def test_refused_requests_are_not_counted():
     for _ in range(5):
         limiter.check("phone", 1, NOW + timedelta(seconds=1))
     assert limiter.check("phone", 1, NOW + timedelta(seconds=60, microseconds=1)) is None
+
+
+def test_a_longer_window_counts_for_longer():
+    limiter = RateLimiter(timedelta(hours=1))
+    limiter.check("someone@example.com", 1, NOW)
+    assert limiter.check("someone@example.com", 1, NOW + timedelta(minutes=59)) is not None
+    assert limiter.check("someone@example.com", 1, NOW + timedelta(minutes=61)) is None

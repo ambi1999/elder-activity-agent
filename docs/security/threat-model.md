@@ -58,8 +58,8 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Lost phone keeps sending | `register_device.py revoke` disables one device without affecting others | ✅ |
 | Token guessed | 256-bit random tokens can't be guessed in practice | ✅ |
 | Photographed setup QR code used to send data | Pending tokens expire unless a first batch arrives within `pairing.pending_token_expiry_minutes` (server setting, default 30, allowed 5 to 1440); the owner sees "Phone connected" and can revoke; QR shown once | ✅ (`scripts/household.py`; web page in step D) |
-| Someone signs in as a family member | Email magic links: single-use, 15 minutes, stored as hashes, rate-limited per address and IP; same response for unknown addresses | 🟡 (step D, ADR 0025) |
-| Stolen session cookie | `Secure`, `HttpOnly`, `SameSite=Lax`, `__Host-` cookie; server-side sessions that sign-out and owners can revoke; HTTPS only (HSTS) | 🟡 (step D) |
+| Someone signs in as a family member | Email magic links: single-use, 15 minutes, stored as hashes, rate-limited per address and IP; same response for unknown addresses; the link opens a page with a button, so email scanners can't use it up; invite only while testing | ✅ (step D1, ADR 0025) |
+| Stolen session cookie | `Secure`, `HttpOnly`, `SameSite=Lax`, `__Host-` cookie; server-side sessions (only a hash of the id stored) that sign-out ends at once; HTTPS only (HSTS) | ✅ (step D1); owners revoking other members' sessions in step D2 |
 | Fake alerts or sign-in emails (phishing) | Messages never ask for anything; links go only to the service's own domain | ✅ (step C) |
 | Fake alerts from a lookalike sender | SPF, DKIM and DMARC on our own sending domain (Resend's test sender until then) | 🟡 (before real users) |
 | Someone links their Telegram chat as a contact | One-time Telegram start codes (hashed, expire after `alerts.link_expiry_minutes`); a contact gets nothing until confirmed; the webhook only accepts calls carrying `TELEGRAM_WEBHOOK_SECRET` | ✅ (step C) |
@@ -73,8 +73,8 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Untested or malicious code reaches production | Protected `main`; changes only through pull requests; CI must pass; Render auto-deploy off | ✅ |
 | Malformed or implausible data | Validation, unknown sensors ignored, stale and future timestamps dropped | ✅ |
 | Replayed batches double-count data | Batch IDs recorded; repeats skipped | ✅ |
-| Cross-site request forgery changes settings or contacts | CSRF token on every form and HTMX request; `SameSite=Lax` cookies | 🟡 (step D) |
-| Injected script in the web app | Jinja2 auto-escaping; Content Security Policy allowing only the app's own scripts; no inline scripts | 🟡 (step D) |
+| Cross-site request forgery changes settings or contacts | CSRF token on every form; forms from other sites refused (Origin header); `SameSite=Lax` cookies | ✅ (step D1) |
+| Injected script in the web app | Jinja2 auto-escaping; Content Security Policy allowing only the app's own scripts and styles; no inline scripts or styles; pages can't be framed | ✅ (step D1) |
 | Alert check triggered by strangers | `/jobs/check-alerts` needs `JOBS_TOKEN` (constant-time check); repeated calls are harmless (open alerts aren't resent) | ✅ (step C) |
 | Vulnerable or malicious dependency | Lockfile, Dependabot, `pip-audit` gate before deploy, CodeQL | ✅ (this PR) |
 
@@ -95,7 +95,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Secrets committed to Git | `.env` ignored; GitHub secret scanning and push protection | ✅ / 🟡 (enable in settings) |
 | Tests wipe or read production data | Tests refuse to run against Neon; separate throwaway database | ✅ |
 | Personal data sent to the LLM or used for training | Only anonymised summaries; Gemini paid tier before real users | 🟡 (ADR 0005) |
-| One household sees another's data | All household data read through one scoped-query module; tests check every route returns 404 for another household's ids; row-level security before real users | 🟡 (step D, ADR 0024) |
+| One household sees another's data | All household data read through one scoped-query module; tests check every route returns 404 for another household's ids; row-level security before real users | ✅ (step D1: `app/access.py`, `tests/test_web_access.py`); row-level security before real users |
 | Former member keeps access | Owners remove members, which revokes their sessions | 🟡 (step D) |
 | Alerts reveal too much in email or Telegram | Messages say what the rule saw and when, never location or raw data | ✅ (step C, ADR 0026) |
 | Location shown or stored | Phones use the logger's `activity` profile; location readings are ignored and never stored, and `ingest.accepted_sensors` can't include it (tested) | ✅ (ADR 0023; no location view in step D either) |
@@ -111,7 +111,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Flood of requests from one device | Per-device rate limiting on `/v1/readings`: `ingest.batches_per_minute_per_device`, then 429 with `Retry-After` (in memory, one instance) | ✅ (ADR 0020) |
 | Strangers keep the database awake (cost) | `/health` never touches the database; `/health/db` needs the API key | ✅ |
 | Strangers use up Gemini quota | `/chat` needs the API key | ✅ |
-| Sign-in link requests used to flood someone's inbox or our email quota | Rate limits per address and per IP | 🟡 (step D) |
+| Sign-in link requests used to flood someone's inbox or our email quota | Rate limits per address (`web.signin_emails_per_hour`) and per network (`web.signin_requests_per_hour_per_ip`) | ✅ (step D1) |
 | Alert storms when many phones go silent at once (an outage on our side) | Phone-silent alerts paused when most devices stop at the same time; a single developer alert instead. Not needed at a handful of households | 🟡 (before real users) |
 
 ### Elevation of privilege

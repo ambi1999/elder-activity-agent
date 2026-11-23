@@ -50,7 +50,7 @@ def migrated_db(alembic_cfg, test_db_url, monkeypatch):
         conn.execute(
             text(
                 "TRUNCATE households, people, devices, ingested_batches, step_readings, minute_summary, device_events, "
-                "alert_contacts, alert_settings, alerts, alert_deliveries"
+                "alert_contacts, alert_settings, alerts, alert_deliveries, users, members, signin_links, sessions"
             )
         )
     yield engine
@@ -59,7 +59,9 @@ def migrated_db(alembic_cfg, test_db_url, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def fresh_rate_limits():
-    """Each test starts with no uploads counted against any device."""
-    rate_limit.uploads.reset()
+    """Each test starts with no uploads or sign-in requests counted."""
+    for limiter in (rate_limit.uploads, rate_limit.signin_by_email, rate_limit.signin_by_ip):
+        limiter.reset()
     yield
-    rate_limit.uploads.reset()
+    for limiter in (rate_limit.uploads, rate_limit.signin_by_email, rate_limit.signin_by_ip):
+        limiter.reset()

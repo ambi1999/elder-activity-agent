@@ -119,6 +119,26 @@ class EmailSettings(_Section):
     from_address: str = Field(min_length=3, max_length=200, pattern=r"@")
 
 
+class WebSettings(_Section):
+    """The family and care web app: sign-in, sessions and refreshing (ADR 0025, ADR 0028)."""
+
+    session_days: int = Field(ge=1, le=90)
+    signin_link_minutes: int = Field(ge=5, le=60)
+    signin_emails_per_hour: int = Field(ge=1, le=20)
+    signin_requests_per_hour_per_ip: int = Field(ge=5, le=500)
+    overview_refresh_seconds: int = Field(ge=15, le=600)
+
+    @property
+    def session_length(self) -> timedelta:
+        """How long a browser stays signed in without signing in again."""
+        return timedelta(days=self.session_days)
+
+    @property
+    def signin_link_expiry(self) -> timedelta:
+        """How long an emailed sign-in link works."""
+        return timedelta(minutes=self.signin_link_minutes)
+
+
 class Settings(_Section):
     """All settings, one attribute per section of config/settings.toml."""
 
@@ -128,6 +148,7 @@ class Settings(_Section):
     alerts: AlertSettings
     telegram: TelegramSettings
     email: EmailSettings
+    web: WebSettings
 
 
 def load_settings(path: Path = DEFAULT_PATH, environ: Mapping[str, str] | None = None) -> Settings:

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+{# The same page whether or not the address has an account, so nobody can find out who uses the app. #}
+<p role="status">If <b>{{ email }}</b> has an account, we've sent it a sign-in link. It works once, for {{ minutes }} minutes.</p>
+<div class="card muted">Can't find it? Check your spam folder, or <a href="/signin">send another link</a>.</div>
+{% endblock %}

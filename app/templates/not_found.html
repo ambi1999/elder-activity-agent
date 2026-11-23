@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+{# Shown both for pages that don't exist and for people the user may not see (story C3-5). #}
+<div class="card empty">This page doesn't exist, or you don't have access to it.</div>
+<a class="btn" href="/">Go to the start</a>
+{% endblock %}

@@ -20,6 +20,18 @@ Alerts (step C, ADR 0026):
   ... household.py alert-settings --person PERSON_ID --waking 08:00-21:00 --inactive-hours 4 --silent-hours 6
   ... household.py setup-telegram        (once, after creating the bot and setting its secrets)
 
+Web app sign-in (step D1, ADR 0025). Accounts are invite only while testing:
+
+  ... household.py add-member --household HOUSEHOLD_ID --email daughter@example.com --name Daughter --role owner
+  ... household.py members --household HOUSEHOLD_ID
+  ... household.py remove-member --household HOUSEHOLD_ID --email daughter@example.com
+  ... household.py signin-link --email daughter@example.com
+
+signin-link prints a one-time sign-in link instead of emailing it: for testing
+while the email service can only send to your own address. Anyone with the
+link can sign in as that user until it is used or expires, so treat it like a
+password: don't share, screenshot or paste it.
+
 Replace PERSON_ID, DEVICE_ID, HOUSEHOLD_ID and CONTACT_ID with the IDs that
 'create', 'list' and 'contacts' print.
 
@@ -42,7 +54,7 @@ from sqlalchemy.engine import Connection
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # so "app" can be imported
 
-from app import alerts, contacts, db, devices, households, rules  # noqa: E402
+from app import alerts, auth, contacts, db, devices, households, rules  # noqa: E402
 from app.messages import confirm_email  # noqa: E402
 from app.notifiers import TelegramNotifier  # noqa: E402
 from app.notifiers import build as build_notifiers  # noqa: E402
@@ -237,6 +249,55 @@ def _alert_settings(args: argparse.Namespace) -> None:
     )
 
 
+def _add_member(args: argparse.Namespace) -> None:
+    with db.get_engine().begin() as conn:
+        household = _household(conn, args.household)
+        try:
+            user = auth.add_user(conn, args.email, args.name or args.email.split("@")[0])
+            auth.add_member(conn, user.id, household.id, args.role)
+        except ValueError as err:
+            sys.exit(str(err))
+    print(f"{user.display_name} ({user.email}) is now {args.role} of {household.name!r}.")
+    print("They can sign in at /signin with that address.")
+
+
+def _members(args: argparse.Namespace) -> None:
+    with db.get_engine().connect() as conn:
+        household = _household(conn, args.household)
+        found = auth.list_members(conn, household.id)
+    print(f"Members of {household.name!r}:")
+    if not found:
+        print("  none yet; add one with 'add-member'")
+    for m in found:
+        print(f"  {m.user.display_name} <{m.user.email}> {m.role}")
+
+
+def _remove_member(args: argparse.Namespace) -> None:
+    with db.get_engine().begin() as conn:
+        household = _household(conn, args.household)
+        try:
+            user = auth.find_user(conn, auth.normalize_email(args.email))
+        except ValueError as err:
+            sys.exit(str(err))
+        done = user is not None and auth.remove_member(conn, user.id, household.id)
+    print("Removed: they can no longer see this household." if done else "They aren't a member of it.")
+
+
+def _signin_link(args: argparse.Namespace) -> None:
+    settings = get_settings()
+    with db.get_engine().begin() as conn:
+        try:
+            user = auth.find_user(conn, auth.normalize_email(args.email))
+        except ValueError as err:
+            sys.exit(str(err))
+        if user is None:
+            sys.exit("No user with that email address. Add them with 'add-member' first.")
+        link = auth.create_signin_link(conn, user, datetime.now(UTC), settings)
+    print(f"Sign-in link for {user.display_name}, works once for {settings.web.signin_link_minutes} minutes:")
+    print(f"  {link}")
+    print("Treat it like a password: don't share, screenshot or paste it.")
+
+
 def _setup_telegram(_: argparse.Namespace) -> None:
     settings = get_settings()
     token, secret = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_WEBHOOK_SECRET")
@@ -308,6 +369,28 @@ def main() -> None:
     commands.add_parser("setup-telegram", help="connect the Telegram bot to this service").set_defaults(
         run=_setup_telegram
     )
+
+    member = commands.add_parser("add-member", help="let someone sign in to the web app and see a household")
+    member.add_argument("--household", required=True, help="the household ID shown by 'list'")
+    member.add_argument("--email", required=True, help="the address they sign in with")
+    member.add_argument("--name", help='how they are shown, e.g. "Daughter" (default: the start of the email)')
+    member.add_argument(
+        "--role", choices=auth.ROLES, default="viewer", help="owner can change settings (default: viewer)"
+    )
+    member.set_defaults(run=_add_member)
+
+    show_members = commands.add_parser("members", help="list who can see a household")
+    show_members.add_argument("--household", required=True, help="the household ID shown by 'list'")
+    show_members.set_defaults(run=_members)
+
+    remove_member = commands.add_parser("remove-member", help="stop someone seeing a household")
+    remove_member.add_argument("--household", required=True, help="the household ID shown by 'list'")
+    remove_member.add_argument("--email", required=True, help="their sign-in address")
+    remove_member.set_defaults(run=_remove_member)
+
+    link = commands.add_parser("signin-link", help="print a one-time sign-in link (for testing)")
+    link.add_argument("--email", required=True, help="the user's sign-in address")
+    link.set_defaults(run=_signin_link)
 
     args = parser.parse_args()
     if args.command == "quiet-hours" and not args.off and not (args.start and args.end):
