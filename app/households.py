@@ -150,6 +150,52 @@ def add_phone(conn: Connection, person: Person, device_name: str, now: datetime,
     return NewPhone(device=device, expires_at=expires_at, provisioning=payload)
 
 
+def find_household(conn: Connection, household_id: uuid.UUID) -> Household | None:
+    """The household with this ID, or None."""
+    row = conn.execute(
+        text("SELECT id, name FROM households WHERE id = :id"),
+        {"id": household_id},
+    ).first()
+    return Household(*row) if row else None
+
+
+def count_household_data(conn: Connection, household_id: uuid.UUID) -> dict[str, int]:
+    """How much would be deleted with a household: people, phones and stored data rows."""
+    row = (
+        conn.execute(
+            text("""
+                SELECT
+                    (SELECT count(*) FROM people WHERE household_id = :id) AS people,
+                    (SELECT count(*) FROM devices d JOIN people p ON p.id = d.person_id
+                      WHERE p.household_id = :id) AS phones,
+                    (SELECT count(*) FROM minute_summary m JOIN devices d ON d.id = m.device_id
+                      JOIN people p ON p.id = d.person_id WHERE p.household_id = :id)
+                  + (SELECT count(*) FROM step_readings s JOIN devices d ON d.id = s.device_id
+                      JOIN people p ON p.id = d.person_id WHERE p.household_id = :id)
+                  + (SELECT count(*) FROM device_events e JOIN devices d ON d.id = e.device_id
+                      JOIN people p ON p.id = d.person_id WHERE p.household_id = :id) AS data_rows
+            """),
+            {"id": household_id},
+        )
+        .mappings()
+        .one()
+    )
+    return dict(row)
+
+
+def delete_household(conn: Connection, household_id: uuid.UUID) -> bool:
+    """Delete a household and, through the database's cascades, everything about it.
+
+    Its people, their phones (whose tokens stop working), and every reading,
+    event and summary from those phones are removed. This cannot be undone.
+
+    Returns:
+        False if there was no such household.
+    """
+    result = conn.execute(text("DELETE FROM households WHERE id = :id"), {"id": household_id})
+    return result.rowcount == 1
+
+
 def list_households(conn: Connection) -> list[dict[str, Any]]:
     """Every household with its people and their phones, for the command line.
 

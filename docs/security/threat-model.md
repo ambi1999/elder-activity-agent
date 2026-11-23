@@ -143,6 +143,8 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 
 **A phone is lost:** revoke it (web app Devices page, or `register_device.py revoke`), then add the replacement.
 
+**A family asks for their data to be deleted:** `scripts/household.py delete HOUSEHOLD_ID` removes the household, its people, phones (tokens stop working) and all their readings, events and summaries.
+
 **A family account is compromised:** revoke its sessions and remove it from the household; check the household's audit log for changes to contacts and devices.
 
 **Suspicious activity** (bursts of 401s, unknown devices in `register_device.py list`): revoke affected devices, rotate `DATABASE_URL`, check Render and Neon access logs, and review recent deploys.

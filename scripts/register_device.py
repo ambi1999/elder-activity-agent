@@ -36,7 +36,7 @@ def main() -> None:
 
     args = parser.parse_args()
     engine = db.get_engine()
-    print(f"Database: {engine.url.host}/{engine.url.database}\n")
+    print(f"Database: {db.describe(engine)}\n")
 
     if args.command == "add":
         try:

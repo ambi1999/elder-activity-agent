@@ -49,3 +49,17 @@ def reset_engine() -> None:
     if _engine is not None:
         _engine.dispose()
     _engine = None
+
+
+def describe(engine: Engine) -> str:
+    """Which database this is, for scripts to print, without its host name.
+
+    The host name identifies the hosting account, so it stays out of terminal
+    output, screenshots and chats. Returns e.g. "Neon (neondb)" or "local (elder)".
+    """
+    host, name = engine.url.host or "", engine.url.database
+    if host in ("localhost", "127.0.0.1"):
+        return f"local ({name})"
+    if host.endswith(".neon.tech"):
+        return f"Neon ({name})"
+    return f"remote ({name})"

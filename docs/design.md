@@ -1,6 +1,6 @@
 # Design: brand, tokens and tone
 
-How the family web app looks and reads. Layouts are in [wireframes/](wireframes/README.md); accessibility and mobile standards are in [ADR 0025](adr/0025-family-web-app.md).
+How the family web app looks and reads. Layouts and branded mockups of every screen are in [wireframes/](wireframes/README.md); accessibility and mobile standards are in [ADR 0025](adr/0025-family-web-app.md).
 
 ## Brand is configuration
 

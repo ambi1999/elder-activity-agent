@@ -54,6 +54,8 @@ convention = "google"
 "tests/**" = ["D", "S101", "S105", "S106", "S608"]
 # Migrations hold SQL written by us, never user input.
 "migrations/**" = ["S608"]
+# Mostly HTML and CSS templates, whose lines are clearer unwrapped.
+"scripts/make_branded_mockups.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
