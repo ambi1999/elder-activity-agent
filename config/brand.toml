@@ -1,0 +1,25 @@
+# Brand for the family and care web app (story D-4, docs/design.md).
+#
+# The company name, logo, product name and colours live here only, never in
+# templates or CSS. Changing the company or its look means editing this file
+# and restarting the app. app/brand.py checks every value when the app starts,
+# and tests/test_brand.py checks the colours' contrast (WCAG 2.2 AA) in CI, so
+# a colour that is too light fails the build and names the pair.
+
+[company]
+name = "TechData Innovate"              # "Made by ..." on sign-in, and About
+website = "https://techdatainnovate.com.au/"
+logo_text = "∎ TECHDATA INNOVATE"       # the footer, when logo_file is empty
+logo_file = ""                          # a file in app/static/, e.g. "brand/logo.svg"; empty: logo_text
+
+[product]
+name = "Elder Activity"                 # the app's name: header, browser tab, installed app
+
+[colours]
+# Light theme. primary: header and buttons, with white text on it (needs 4.5:1).
+# accent: links, the selected tab, charts and focus outlines (4.5:1 on white).
+primary = "#0B1F3A"                     # navy from the company site
+accent = "#0A6B74"                      # teal; replace with the company's own when known
+# Dark theme (when the phone or computer is set to dark).
+primary_dark = "#13294A"
+accent_dark = "#5FC0C8"

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="row"><span>App</span><b>{{ brand.product.name }}</b></div>
+  <div class="row"><span>Version</span><b>{{ version }}</b></div>
+  <div class="row"><span>Made by</span><b>{% if brand.company.website %}<a href="{{ brand.company.website }}">{{ brand.company.name }}</a>{% else %}{{ brand.company.name }}{% endif %}</b></div>
+</div>
+<div class="card">The phone shares activity only: steps, screen use, walking and battery. Never its location.</div>
+{% endblock %}

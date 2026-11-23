@@ -1,4 +1,4 @@
-"""Per-device request limits for uploads (ADR 0020).
+"""Request limits: uploads per device (ADR 0020) and sign-in requests (ADR 0025).
 
 Each device may send ``ingest.batches_per_minute_per_device`` batches in any
 60-second window; more get 429 Too Many Requests with a Retry-After header.
@@ -19,9 +19,14 @@ WINDOW = timedelta(minutes=1)
 
 
 class RateLimiter:
-    """Counts requests per key in a sliding one-minute window. Thread-safe."""
+    """Counts requests per key in a sliding window (one minute unless given). Thread-safe.
 
-    def __init__(self) -> None:
+    Args:
+        window: How far back requests are counted.
+    """
+
+    def __init__(self, window: timedelta = WINDOW) -> None:
+        self._window = window
         self._seen: dict[str, deque[datetime]] = {}
         self._lock = threading.Lock()
 
@@ -39,10 +44,10 @@ class RateLimiter:
         """
         with self._lock:
             times = self._seen.setdefault(key, deque())
-            while times and times[0] <= now - WINDOW:
+            while times and times[0] <= now - self._window:
                 times.popleft()
             if len(times) >= limit:
-                wait = (times[0] + WINDOW - now).total_seconds()
+                wait = (times[0] + self._window - now).total_seconds()
                 return max(1, math.ceil(wait))
             times.append(now)
             return None
@@ -55,3 +60,7 @@ class RateLimiter:
 
 # One limiter for uploads, shared by all requests in this process.
 uploads = RateLimiter()
+
+# Sign-in requests in any hour: per email address, and per network address (ADR 0025).
+signin_by_email = RateLimiter(timedelta(hours=1))
+signin_by_ip = RateLimiter(timedelta(hours=1))

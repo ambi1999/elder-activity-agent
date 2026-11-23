@@ -97,3 +97,22 @@ bot_username = ""
 # address at your own verified domain for real use. The API key is the secret
 # RESEND_API_KEY, set only in the environment.
 from_address = "Elder Activity <onboarding@resend.dev>"
+
+[web]
+# The family and care web app (ADR 0025, ADR 0028).
+# A browser stays signed in this many days, then the user signs in again with a
+# new email link. Signing out ends it at once. Allowed: 1 to 90.
+session_days = 30
+
+# How long an emailed sign-in link works; each link works once. Allowed: 5 to 60 minutes.
+signin_link_minutes = 15
+
+# Sign-in emails one address can be sent per hour, so nobody can flood someone's
+# inbox by typing their address. Allowed: 1 to 20.
+signin_emails_per_hour = 5
+
+# Sign-in requests (any address) from one network address per hour. Allowed: 5 to 500.
+signin_requests_per_hour_per_ip = 30
+
+# How often the care overview refreshes itself while open. Allowed: 15 to 600 seconds.
+overview_refresh_seconds = 60

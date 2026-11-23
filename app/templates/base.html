@@ -1,0 +1,63 @@
+{# Every page: header with Back and the account menu, the content, and the main navigation
+   (bottom tabs on phones, a side menu from 900 px wide). Sign-in pages have no menus. #}
+{% import "_icons.html" as icon %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ title }} · {{ brand.product.name }}</title>
+<meta name="theme-color" content="{{ brand.colours.primary }}">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/static/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<link rel="stylesheet" href="/brand/tokens.css">
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="app{{ ' bare' if not session }}">
+  {% if session %}
+  <nav class="side" aria-label="Main">
+    <a class="brand" href="/">{{ brand.product.name }}</a>
+    <a class="nav" href="/people"{% if tab == "people" %} aria-current="page"{% endif %}>{{ icon.people() }}<span>People</span></a>
+    <a class="nav" href="/alerts"{% if tab == "alerts" %} aria-current="page"{% endif %}>{{ icon.bell() }}<span>Alerts{% if open_alerts %} <span class="count">{{ open_alerts }}<span class="sr-only"> open</span></span>{% endif %}</span></a>
+    <a class="nav" href="/settings"{% if tab == "settings" %} aria-current="page"{% endif %}>{{ icon.gear() }}<span>Settings</span></a>
+  </nav>
+  {% endif %}
+  <div class="main">
+    <header class="top">
+      {% if up %}<a class="iconbtn" href="{{ up }}" aria-label="Back">{{ icon.back() }}</a>{% else %}<span class="spacer"></span>{% endif %}
+      <h1 id="pagetitle">{{ title }}</h1>
+      {% if session %}
+      {# The account menu: a native disclosure, so it works without JavaScript; app.js closes it on Escape or outside clicks. #}
+      <details class="acct">
+        <summary class="iconbtn" aria-label="Account: {{ me.display_name }}"><span class="avatar" aria-hidden="true">{{ me.display_name[:1] | upper }}</span></summary>
+        <div class="menu">
+          <div class="who"><b>{{ me.display_name }}</b>{{ me.email }}</div>
+          <a href="/settings">Settings</a>
+          <a href="/help">Help</a>
+          <a href="/about">About</a>
+          <form method="post" action="/signout"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Sign out</button></form>
+        </div>
+      </details>
+      {% endif %}
+    </header>
+    <main class="content" id="main">
+      {% block content %}{% endblock %}
+      <div class="foot">
+        {% if brand.company.logo_file %}<img src="/static/{{ brand.company.logo_file }}" alt="{{ brand.company.name }}" class="logo">{% else %}{{ brand.company.logo_text }}{% endif %}
+      </div>
+    </main>
+    {% if session %}
+    <nav class="tabs" aria-label="Main">
+      <a href="/people"{% if tab == "people" %} aria-current="page"{% endif %}><span class="pill">{{ icon.people() }}</span><span>People</span></a>
+      <a href="/alerts"{% if tab == "alerts" %} aria-current="page"{% endif %}><span class="pill">{{ icon.bell() }}</span><span>Alerts{% if open_alerts %} · {{ open_alerts }}<span class="sr-only"> open</span>{% endif %}</span></a>
+      <a href="/settings"{% if tab == "settings" %} aria-current="page"{% endif %}><span class="pill">{{ icon.gear() }}</span><span>Settings</span></a>
+    </nav>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

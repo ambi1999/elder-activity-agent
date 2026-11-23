@@ -15,6 +15,8 @@ dependencies = [
     "pydantic>=2.9",            # typed, validated settings and request models
     "segno>=1.6",               # QR codes for phone setup, printed in the terminal (ADR 0024)
     "httpx>=0.27",              # sending alerts by Telegram and email (ADR 0026)
+    "jinja2>=3.1",              # the web app's HTML templates (ADR 0025)
+    "python-multipart>=0.0.20", # reading the web app's forms (ADR 0025)
 ]
 
 [dependency-groups]

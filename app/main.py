@@ -7,6 +7,8 @@ Routes:
     POST /v1/readings     phone-sensor-logger protocol v1 uploads (ADR 0023)
     POST /ingest          Sensor Logger uploads, until no test phone uses it (ADR 0014)
     Alert routes (check job, Telegram webhook, email links): see app/alert_routes.py
+    The family and care web app (sign-in, people, alerts): see app/web.py
+    GET  /static/...      the web app's stylesheet, script and icons
 """
 
 import hmac
@@ -18,12 +20,14 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
-from app import agent, alert_routes, db, devices, protocol_v1, rate_limit, sensor_logger, storage
+from app import agent, alert_routes, db, devices, protocol_v1, rate_limit, sensor_logger, storage, web
+from app.brand import STATIC, contrast_problems, get_brand
 from app.limits import BodyTooLarge, MaxBodySizeMiddleware
 from app.problems import Problem, handle_problem
 from app.settings import Settings, get_settings
@@ -33,11 +37,18 @@ log = logging.getLogger(__name__)
 
 # Loaded here so a wrong setting stops the app at startup, naming the setting (story A-1).
 settings = get_settings()
+# The brand too (story D-4): a wrong value in config/brand.toml stops the app, naming it.
+brand = get_brand()
+for problem in contrast_problems(brand.colours):
+    # CI fails on these (tests/test_brand.py); here a warning, so a deploy isn't stopped by a colour.
+    log.warning("Brand colour contrast too low: %s", problem)
 
-app = FastAPI(title="Elder Activity Agent", version="0.5.0")
+app = FastAPI(title="Elder Activity Agent", version=web.VERSION)
 app.add_middleware(MaxBodySizeMiddleware, max_bytes=settings.ingest.max_body_bytes)
 app.add_exception_handler(Problem, handle_problem)
 app.include_router(alert_routes.router)
+app.include_router(web.router)
+app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 
 class ChatRequest(BaseModel):

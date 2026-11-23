@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+{# A button, not an automatic sign-in: email security scanners open links, and must not use them up. #}
+<p>Press the button to sign in on this device.</p>
+<form method="post"><button class="btn" type="submit">Sign in</button></form>
+{% endblock %}

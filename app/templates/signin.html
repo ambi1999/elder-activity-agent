@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+{% if notice %}<p class="banner green" role="status">{{ notice }}</p>{% endif %}
+<p>Enter your email address and we'll send you a link to sign in. No password needed.</p>
+<form method="post" action="/signin" novalidate>
+  <div class="field">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" inputmode="email" value="{{ email }}" required
+      {% if error %}aria-invalid="true" aria-describedby="email-error"{% endif %}>
+    {% if error %}<div class="error" id="email-error">{{ error }}</div>{% endif %}
+  </div>
+  <button class="btn" type="submit">Email me a sign-in link</button>
+</form>
+<p class="muted">Made by {{ brand.company.name }}.</p>
+{% endblock %}

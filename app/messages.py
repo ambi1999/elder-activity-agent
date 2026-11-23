@@ -107,3 +107,14 @@ def telegram_linked(name: str) -> Message:
         subject="Linked",
         text=f"Thanks {name}: this chat will now receive Elder Activity alerts. This is a test message.",
     )
+
+
+def signin_link(product: str, link: str, minutes: int) -> Message:
+    """The email with a one-time sign-in link for the web app (story C3-1)."""
+    return Message(
+        subject=f"Sign in to {product}",
+        text=(
+            f"Open this link to sign in to {product}. It works once, for {minutes} minutes:\n\n{link}\n\n"
+            "If you didn't ask to sign in, ignore this email: nobody can sign in without the link."
+        ),
+    )

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icon %}
+{% block content %}
+{# The care overview (story D-5). app.js reloads the list every data-refresh seconds and
+   announces the summary in the live region below when it changes. #}
+<div id="overview" data-refresh="{{ refresh }}" data-src="/people/list">
+{% include "_overview_list.html" %}
+</div>
+<p class="muted small">Updates by itself while open.</p>
+<div class="sr-only" aria-live="polite" id="live"></div>
+{% endblock %}

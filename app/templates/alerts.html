@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icon %}
+{% block content %}
+{% macro row(a) %}
+{% set level = "green" if a.status == "resolved" else ("amber" if a.rule == "phone_silent" else "red") %}
+<li><a class="item" href="/alerts/{{ a.id }}">
+  {{ icon.badge(level, "Closed" if level == "green" else ("Phone not sending" if level == "amber" else "Needs attention")) }}
+  <span class="grow"><b>{{ a.person.display_name }}: {{ "phone not sending" if a.rule == "phone_silent" else "no activity" }}</b>
+    <small>{% if a.status == "acknowledged" %}{{ "You're" if a.acknowledged_by == me.display_name else a.acknowledged_by ~ " is" }} checking · {% elif a.status == "resolved" %}Closed · {% endif %}opened {{ when(a.opened_at, a.person.timezone, now) }}</small></span>
+  {{ icon.chev() }}
+</a></li>
+{% endmacro %}
+<h2>Open</h2>
+{% if open %}<ul class="list">{% for a in open %}{{ row(a) }}{% endfor %}</ul>
+{% else %}<div class="card empty">No open alerts. All looks normal.</div>{% endif %}
+<h2>Recent</h2>
+{% if closed %}<ul class="list">{% for a in closed %}{{ row(a) }}{% endfor %}</ul>
+{% else %}<div class="card empty">No alerts closed in the last 7 days.</div>{% endif %}
+{% endblock %}

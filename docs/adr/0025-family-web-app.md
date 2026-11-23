@@ -37,3 +37,9 @@ The service gains templates, static files, sessions and an email sender. Accessi
 ## When to revisit
 
 If families need offline access or rich charts that HTMX makes awkward, or if a native app is needed for notifications.
+
+## Update (2026-11-24, step D1)
+
+- **No HTMX yet.** Plain forms (post, then redirect) and one small script (`app/static/app.js`: the account menu, and refreshing the care overview) were enough, and keep the Content Security Policy strict with no third-party script. HTMX can still be added if a page needs partial updates the script can't do simply.
+- **No service worker yet.** The app is installable (manifest and icons); a service worker that caches only the app's shell follows when offline use is needed.
+- **Automated accessibility checks later.** CI runs unit and isolation tests; axe-core and Lighthouse are added before real users. Until then, layouts are checked by hand at 320, 375 and 412 px and at 200% text.
