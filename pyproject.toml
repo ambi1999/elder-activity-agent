@@ -12,14 +12,58 @@ dependencies = [
     "sqlalchemy>=2.1.8",
     "alembic>=1.20.1",
     "psycopg[binary]>=3.3.9",
+    "pydantic>=2.9",            # typed, validated settings and request models
+    "segno>=1.6",               # QR codes for phone setup, printed in the terminal (ADR 0024)
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8",
     "httpx>=0.27",
+    "jsonschema>=4.23",         # contract tests against the logger's protocol schemas
+    "ruff>=0.16",               # linting, formatting and docstring checks (CONTRIBUTING.md)
+    "mypy>=1.18",               # static type checking
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+# ---------------------------------------------------------------------------
+# Code quality (CONTRIBUTING.md). Run locally with:
+#   uv run ruff check . && uv run ruff format --check . && uv run mypy
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import order, UP modern syntax, B likely bugs,
+# SIM simplifications, D docstrings (Google style), S security checks.
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "D", "S"]
+ignore = [
+    "D105",  # magic methods such as __call__ need no docstring
+    "D107",  # __init__ is documented on its class
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests are described by their names; assert is how pytest works; fixtures use fake secrets.
+"tests/**" = ["D", "S101", "S105", "S106", "S608"]
+# Migrations hold SQL written by us, never user input.
+"migrations/**" = ["S608"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app", "scripts", "migrations"]
+disallow_untyped_defs = true      # every function has type hints
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = ["segno.*"]
+ignore_missing_imports = true

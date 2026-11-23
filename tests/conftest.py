@@ -4,6 +4,7 @@ Database tests run only when TEST_DATABASE_URL is set (Docker locally, a service
 container in CI). They are skipped otherwise, except in CI, where a missing
 database is an error so tests can't silently stop running.
 """
+
 import os
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import text
 
-from app import db
+from app import db, rate_limit
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,6 +47,16 @@ def migrated_db(alembic_cfg, test_db_url, monkeypatch):
     db.reset_engine()
     engine = db.get_engine()
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE devices, ingested_batches, step_readings, minute_summary"))
+        conn.execute(
+            text("TRUNCATE households, people, devices, ingested_batches, step_readings, minute_summary, device_events")
+        )
     yield engine
     db.reset_engine()
+
+
+@pytest.fixture(autouse=True)
+def fresh_rate_limits():
+    """Each test starts with no uploads counted against any device."""
+    rate_limit.uploads.reset()
+    yield
+    rate_limit.uploads.reset()

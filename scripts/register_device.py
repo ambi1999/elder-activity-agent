@@ -1,4 +1,6 @@
-"""Register, list or revoke phones (ADR 0011).
+"""Register, list or revoke phones directly, for developers and Sensor Logger (ADR 0011).
+
+Phones for a household are added with scripts/household.py instead (ADR 0024).
 
 Run from the project folder. Uses DATABASE_URL from .env, so it works on Neon:
 
@@ -6,6 +8,7 @@ Run from the project folder. Uses DATABASE_URL from .env, so it works on Neon:
   uv run --env-file .env python scripts/register_device.py list
   uv run --env-file .env python scripts/register_device.py revoke DEVICE_ID
 """
+
 import argparse
 import sys
 import uuid
@@ -18,6 +21,7 @@ from app import db, devices  # noqa: E402
 
 
 def main() -> None:
+    """Parse the command line and run the chosen command."""
     parser = argparse.ArgumentParser(description="Manage phones that send data to /ingest.")
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -53,7 +57,7 @@ def main() -> None:
         if not rows:
             print("No devices registered.")
         for row in rows:
-            status = "REVOKED" if row["revoked_at"] else "active"
+            status = row["status"]
             last_seen = row["last_seen_at"] or "never"
             print(f"{row['id']}  {status:7}  {row['name']!r} ({row['timezone']})  last seen: {last_seen}")
 

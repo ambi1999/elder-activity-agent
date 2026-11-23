@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:phone-sensor-logger:protocol:v1:provisioning",
+  "title": "phone-sensor-logger protocol v1: provisioning (QR code contents)",
+  "description": "The JSON encoded in a setup QR code. It contains a device token, so it is a secret: show it once and never store or photograph it.",
+  "type": "object",
+  "required": ["type", "version", "endpoint", "token"],
+  "properties": {
+    "type": { "const": "phone-sensor-logger/provisioning" },
+    "version": { "const": 1 },
+    "endpoint": {
+      "description": "Full HTTPS URL that batches are POSTed to.",
+      "type": "string", "maxLength": 500, "pattern": "^https://[^\\s]+$"
+    },
+    "token": {
+      "description": "Device token, sent as 'Authorization: Bearer <token>'.",
+      "type": "string", "minLength": 20, "maxLength": 500, "pattern": "^[A-Za-z0-9._~+/=-]+$"
+    },
+    "device_name": { "type": "string", "maxLength": 100 },
+    "profile": {
+      "description": "Optional name of a runtime settings profile the receiver recommends, e.g. 'activity' (see config/profiles in the app repository).",
+      "type": "string", "maxLength": 100
+    }
+  }
+}

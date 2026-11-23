@@ -1,0 +1,16 @@
+{
+  "protocol": "phone-sensor-logger/v1",
+  "session_id": "c0ffee00-0000-4000-8000-000000000002",
+  "batch_seq": 0,
+  "sent_at": 1794820000000,
+  "timezone": "UTC",
+  "readings": [
+    { "sensor": "light_lux", "t": 1794819991000, "value": 42 },
+    { "sensor": "battery", "t": 1794819992000, "level": 1.5, "charging": false },
+    { "sensor": "steps_total", "t": 1794819993000, "value": -3 }
+  ],
+  "summaries": [
+    { "sensor": "light_lux", "minute": 1794819961234, "count": 5, "sum": 10, "min": 1, "max": 3 },
+    { "sensor": "steps_total", "minute": 1794819960000, "count": 1, "sum": 5, "min": 5, "max": 5 }
+  ]
+}

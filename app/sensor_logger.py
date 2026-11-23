@@ -1,10 +1,13 @@
 """Adapter: translate Sensor Logger's HTTP push format into our internal readings (ADR 0014).
 
-When Sensor Logger is replaced by our own Android app, this file is deleted;
+When no test phone uses Sensor Logger any more (phone-sensor-logger replaces it,
+ADR 0023), this file and the /ingest route are deleted;
 nothing else depends on Sensor Logger's format.
 """
+
 import math
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -17,10 +20,11 @@ CHARGING_STATES = {"charging", "full"}
 
 class SensorLoggerBatch(BaseModel):
     """One message from Sensor Logger's HTTP push."""
+
     messageId: int
     sessionId: str = Field(min_length=1, max_length=200)
     deviceId: str = Field(max_length=200)
-    payload: list[dict] = Field(default_factory=list, max_length=MAX_READINGS_PER_BATCH)
+    payload: list[dict[str, Any]] = Field(default_factory=list, max_length=MAX_READINGS_PER_BATCH)
 
 
 def _time(ns: object) -> datetime:
@@ -36,10 +40,14 @@ def _number(value: object) -> float:
     return float(value)
 
 
-def _reading(item: dict) -> Reading | None:
+def _reading(item: dict[str, Any]) -> Reading | None:
     """Convert one item. Returns None for sensors we don't use; raises for malformed items."""
     name = item.get("name")
     values = item.get("values")
+    if not isinstance(values, dict):
+        if name in ("pedometer", "light", "battery"):
+            raise ValueError("values must be an object")
+        return None
     if name == "pedometer":
         steps = values["steps"]
         if isinstance(steps, bool) or not isinstance(steps, int) or steps < 0:
@@ -60,6 +68,7 @@ def _reading(item: dict) -> Reading | None:
 
 
 def to_batch(raw: SensorLoggerBatch) -> Batch:
+    """Translate a Sensor Logger message, ignoring unknown sensors and malformed items."""
     readings: list[Reading] = []
     ignored = 0
     for item in raw.payload:

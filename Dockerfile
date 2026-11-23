@@ -17,6 +17,7 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY app ./app
+COPY config ./config
 COPY alembic.ini ./
 COPY migrations ./migrations
 ENV PATH="/srv/.venv/bin:$PATH"

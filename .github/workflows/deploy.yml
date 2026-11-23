@@ -37,6 +37,22 @@ jobs:
       - run: uv sync --locked
       - run: uv run pytest -q -rs
 
+  lint:
+    # Style, docstrings and types (CONTRIBUTING.md). Fails the build on any finding.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Lint and docstrings (ruff)
+        run: uv run ruff check --output-format github .
+      - name: Formatting (ruff)
+        run: uv run ruff format --check .
+      - name: Types (mypy)
+        run: uv run mypy
+
   audit:
     # Known vulnerabilities in locked dependencies block the deploy (ADR 0021).
     runs-on: ubuntu-latest
@@ -49,7 +65,7 @@ jobs:
           uvx pip-audit --requirement /tmp/requirements.txt --disable-pip
 
   deploy:
-    needs: [test, audit]
+    needs: [test, lint, audit]
     # Only deploy from main, never from pull requests.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest

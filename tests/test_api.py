@@ -1,4 +1,5 @@
 """API tests that don't need a database."""
+
 from fastapi.testclient import TestClient
 
 from app import agent, main
@@ -13,6 +14,7 @@ def fake_agent(message: str) -> dict:
 
 # ---------- /health ----------
 
+
 def test_health():
     body = client.get("/health").json()
     assert body["status"] == "ok"
@@ -20,6 +22,7 @@ def test_health():
 
 
 # ---------- /chat ----------
+
 
 def test_chat(monkeypatch):
     monkeypatch.setattr(agent, "run_agent", fake_agent)
@@ -48,6 +51,7 @@ def test_chat_model_failure(monkeypatch):
 
 # ---------- /ingest checks that happen before the database ----------
 
+
 def small_batch() -> dict:
     return {"messageId": 1, "sessionId": "s", "deviceId": "d", "payload": []}
 
@@ -59,7 +63,8 @@ def test_ingest_without_token_is_rejected():
 def test_ingest_rejects_oversized_body():
     big = b"x" * 1_000_001
     response = client.post(
-        "/ingest", content=big,
+        "/ingest",
+        content=big,
         headers={"Content-Type": "application/json", "Authorization": "anything"},
     )
     assert response.status_code == 413

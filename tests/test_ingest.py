@@ -1,4 +1,5 @@
 """End-to-end /ingest tests against a real Postgres database."""
+
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -63,6 +64,7 @@ def count(engine, table):
 
 # ---------- authentication ----------
 
+
 def test_unknown_token_is_rejected(migrated_db):
     assert post("not-a-real-token", batch(1, [])).status_code == 401
 
@@ -82,6 +84,7 @@ def test_tokens_are_stored_only_as_hashes(migrated_db):
 
 
 # ---------- saving ----------
+
 
 def test_valid_batch_is_saved(migrated_db):
     device, token = register(migrated_db)
@@ -127,7 +130,7 @@ def test_batch_order_does_not_change_the_result(migrated_db):
     assert first == second
     [row] = first
     assert (row["light_sum"], row["light_samples"], row["light_max"]) == (60, 3, 30)
-    assert row["battery_level"] == pytest.approx(0.4)   # the newest battery reading wins
+    assert row["battery_level"] == pytest.approx(0.4)  # the newest battery reading wins
     assert row["battery_charging"] is True
 
 
@@ -140,7 +143,7 @@ def test_unknown_sensors_are_ignored(migrated_db):
 
 def test_stale_and_future_readings_are_dropped(migrated_db):
     device, token = register(migrated_db)
-    stale = steps(T0 - timedelta(minutes=110), 0)   # like Sensor Logger's first pedometer reading
+    stale = steps(T0 - timedelta(minutes=110), 0)  # like Sensor Logger's first pedometer reading
     future = light(datetime.now(UTC) + timedelta(hours=1), 5)
     response = post(token, batch(1, [stale, light(at(0), 10), future]))
 
@@ -157,7 +160,7 @@ def test_failure_mid_batch_saves_nothing_and_retry_works(migrated_db, monkeypatc
 
     monkeypatch.setattr(storage, "_upsert_minutes", fail)
     assert post(token, body).status_code == 503
-    assert count(migrated_db, "ingested_batches") == 0   # rolled back, so a retry isn't a "duplicate"
+    assert count(migrated_db, "ingested_batches") == 0  # rolled back, so a retry isn't a "duplicate"
     assert count(migrated_db, "step_readings") == 0
 
     monkeypatch.undo()

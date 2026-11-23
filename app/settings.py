@@ -1,0 +1,143 @@
+"""Typed, validated settings from config/settings.toml (story A-1, CONTRIBUTING.md).
+
+Settings are loaded once, the first time they are needed, from the TOML file
+and then from environment variables named ``SECTION__KEY``, which win. Every
+value is checked against its allowed range; a wrong value stops the app with a
+message naming the setting, so a typo can't silently change behaviour.
+
+Secrets are deliberately not settings: they stay in environment variables.
+"""
+
+import os
+import tomllib
+from collections.abc import Mapping
+from datetime import timedelta
+from functools import lru_cache
+from pathlib import Path
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+
+DEFAULT_PATH = Path(__file__).resolve().parents[1] / "config" / "settings.toml"
+
+# Sensors this service knows how to store. Location is not among them, so it
+# can never be accepted, whatever the configuration says (ADR 0022).
+STORABLE_SENSORS = ("steps_total", "light_lux", "battery", "screen", "activity", "motion")
+
+
+class SettingsError(RuntimeError):
+    """A setting is missing, unknown or outside its allowed range."""
+
+
+class _Section(BaseModel):
+    # Unknown keys are errors, so a misspelt setting is noticed instead of ignored.
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class ServerSettings(_Section):
+    """Where this service can be reached."""
+
+    public_url: str = Field(pattern=r"^https://[^/\s]+(/[^\s]*[^/\s])?$")
+
+    @property
+    def readings_endpoint(self) -> str:
+        """The protocol v1 upload URL given to phones in their setup QR code."""
+        return f"{self.public_url}/v1/readings"
+
+
+class PairingSettings(_Section):
+    """How phones are added to a household (ADR 0024)."""
+
+    pending_token_expiry_minutes: int = Field(ge=5, le=1440)
+    device_profile: Literal["minimal", "activity", "full"]
+
+    @property
+    def pending_token_expiry(self) -> timedelta:
+        """How long a new phone's token works before its first batch."""
+        return timedelta(minutes=self.pending_token_expiry_minutes)
+
+
+class IngestSettings(_Section):
+    """Limits and rules for receiving data from phones (ADR 0020, ADR 0023)."""
+
+    max_body_bytes: int = Field(ge=1_000_000, le=10_000_000)
+    max_items_per_batch: int = Field(ge=10_000, le=50_000)
+    max_future_minutes: int = Field(ge=0, le=60)
+    max_reading_age_days: int = Field(ge=1, le=30)
+    batches_per_minute_per_device: int = Field(ge=1, le=600)
+    accepted_sensors: tuple[str, ...]
+
+    @field_validator("accepted_sensors", mode="before")
+    @classmethod
+    def _split_text(cls, value: object) -> object:
+        # An environment variable arrives as "a,b,c"; the TOML file gives a list.
+        if isinstance(value, str):
+            return tuple(part.strip() for part in value.split(",") if part.strip())
+        return value
+
+    @field_validator("accepted_sensors")
+    @classmethod
+    def _only_storable(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if "location" in value:
+            raise ValueError("location is never stored (ADR 0022)")
+        unknown = sorted(set(value) - set(STORABLE_SENSORS))
+        if unknown:
+            raise ValueError(f"unknown sensors {unknown}; allowed: {', '.join(STORABLE_SENSORS)}")
+        return value
+
+
+class Settings(_Section):
+    """All settings, one attribute per section of config/settings.toml."""
+
+    server: ServerSettings
+    pairing: PairingSettings
+    ingest: IngestSettings
+
+
+def load_settings(path: Path = DEFAULT_PATH, environ: Mapping[str, str] | None = None) -> Settings:
+    """Read, override and validate settings.
+
+    Args:
+        path: The TOML settings file.
+        environ: Environment variables to apply on top of the file; defaults
+            to the process environment. Passed in so tests can control it.
+
+    Returns:
+        The validated settings.
+
+    Raises:
+        SettingsError: If the file is missing or any value is invalid. The
+            message names each wrong setting as ``section.key``.
+    """
+    environ = os.environ if environ is None else environ
+    try:
+        raw = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as err:
+        raise SettingsError(f"Cannot read settings file {path}: {err}") from err
+
+    for section, values in raw.items():
+        if not isinstance(values, dict):
+            continue
+        for key in list(values):
+            env_name = f"{section}__{key}".upper()
+            if env_name in environ:
+                values[key] = environ[env_name]
+
+    try:
+        return Settings.model_validate(raw)
+    except ValidationError as err:
+        problems = "; ".join(
+            f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}" for error in err.errors()
+        )
+        raise SettingsError(f"Invalid settings in {path.name} or environment: {problems}") from err
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """The settings for this process, loaded on first use and then reused."""
+    return load_settings()
+
+
+def reset_settings() -> None:
+    """Forget the loaded settings, so the next call reloads them (used by tests)."""
+    get_settings.cache_clear()

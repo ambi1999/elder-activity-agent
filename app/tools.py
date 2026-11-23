@@ -3,16 +3,18 @@
 Each tool is a plain Python function with type hints and a docstring.
 The Gemini SDK reads these to tell the model what each tool does.
 """
+
 import ast
 import operator
-#from datetime import datetime
+from collections.abc import Callable
 from datetime import date, datetime
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # Only these operations are allowed in the calculator. Anything else
 # (function calls, names, attribute access) is rejected, so users can't
 # run arbitrary code the way they could with Python's eval().
-_OPS = {
+_OPS: dict[type, Callable[..., Any]] = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
@@ -41,9 +43,10 @@ def get_current_time(timezone: str = "UTC") -> str:
 
 
 def _evaluate(node: ast.AST) -> float:
+    """Evaluate a parsed expression, allowing only numbers and the operators in _OPS."""
     if isinstance(node, ast.Expression):
         return _evaluate(node.body)
-    if isinstance(node, ast.Constant) and type(node.value) in (int, float):
+    if isinstance(node, ast.Constant) and isinstance(node.value, int | float) and not isinstance(node.value, bool):
         return node.value
     if isinstance(node, ast.BinOp) and type(node.op) in _OPS:
         left, right = _evaluate(node.left), _evaluate(node.right)
@@ -89,14 +92,15 @@ def days_until(target_date: str) -> str:
         return f"{target_date} is today"
     return f"{target_date} was {-days} days ago"
 
-TOOLS = {
+
+TOOLS: dict[str, Callable[..., str]] = {
     "get_current_time": get_current_time,
     "calculate": calculate,
     "days_until": days_until,
 }
 
 
-def run_tool(name: str, args: dict) -> str:
+def run_tool(name: str, args: dict[str, Any]) -> str:
     """Run a tool by name. Errors are returned as text so the model can recover."""
     func = TOOLS.get(name)
     if func is None:
