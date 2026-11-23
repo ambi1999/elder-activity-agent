@@ -1,0 +1,6 @@
+{
+  "type": "phone-sensor-logger/provisioning",
+  "version": 1,
+  "endpoint": "http://example.com/v1/readings",
+  "token": "EXAMPLE-not-a-real-token-0123456789abcdef"
+}

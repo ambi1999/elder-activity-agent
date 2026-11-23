@@ -186,7 +186,6 @@ Dependabot opens pull requests for dependency, GitHub Actions and Docker image u
 
 ## 8. Not built yet
 
-- Protocol v1 endpoint, households and command-line pairing (step A), replacing the Sensor Logger adapter
 - Rules, alerts by email and Telegram (step C)
 - Sign-in and the family web app (step D)
 - Activity features, personal baseline, agent summaries (Phases 2–4)

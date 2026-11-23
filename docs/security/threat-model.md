@@ -2,7 +2,7 @@
 
 A living document: update it in the same pull request as any change that affects what the system stores, who can reach it, or how it is deployed.
 
-**Last reviewed:** 2026-11-22 (working-version plan added: rows marked 🟡 with a step are designed in ADRs 0023 to 0026 and built in that step of the [roadmap](../ROADMAP.md))
+**Last reviewed:** 2026-11-23 (step A built) (working-version plan added: rows marked 🟡 with a step are designed in ADRs 0023 to 0026 and built in that step of the [roadmap](../ROADMAP.md))
 
 ## 1. What we are protecting
 
@@ -57,7 +57,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Fake phone sends data | Per-device random tokens (256 bits), checked by hash; unknown tokens get 401 | ✅ |
 | Lost phone keeps sending | `register_device.py revoke` disables one device without affecting others | ✅ |
 | Token guessed | 256-bit random tokens can't be guessed in practice | ✅ |
-| Photographed setup QR code used to send data | Pending tokens expire unless a first batch arrives within `pairing.pending_token_expiry_minutes` (server setting, default 30, allowed 5 to 1440); the owner sees "Phone connected" and can revoke; QR shown once | 🟡 (step A, ADR 0024) |
+| Photographed setup QR code used to send data | Pending tokens expire unless a first batch arrives within `pairing.pending_token_expiry_minutes` (server setting, default 30, allowed 5 to 1440); the owner sees "Phone connected" and can revoke; QR shown once | ✅ (`scripts/household.py`; web page in step D) |
 | Someone signs in as a family member | Email magic links: single-use, 15 minutes, stored as hashes, rate-limited per address and IP; same response for unknown addresses | 🟡 (step D, ADR 0025) |
 | Stolen session cookie | `Secure`, `HttpOnly`, `SameSite=Lax`, `__Host-` cookie; server-side sessions that sign-out and owners can revoke; HTTPS only (HSTS) | 🟡 (step D) |
 | Fake alerts or sign-in emails (phishing) | Messages never ask for anything; links go only to the service's own domain; SPF, DKIM and DMARC on the sending domain | 🟡 (step C) |
@@ -96,7 +96,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | One household sees another's data | All household data read through one scoped-query module; tests check every route returns 404 for another household's ids; row-level security before real users | 🟡 (step D, ADR 0024) |
 | Former member keeps access | Owners remove members, which revokes their sessions | 🟡 (step D) |
 | Alerts reveal too much in email or Telegram | Messages say what the rule saw and when, never location or raw data; details only in the signed-in app | 🟡 (step C, ADR 0026) |
-| Location shown or stored | Phones use the logger's `activity` profile; location readings are ignored and never stored; the web app has no location view | 🟡 (step A, ADR 0023) |
+| Location shown or stored | Phones use the logger's `activity` profile; location readings are ignored and never stored, and `ingest.accepted_sensors` can't include it (tested) | ✅ (ADR 0023; no location view in step D either) |
 | Personal data in LLM prompts | Prompts contain summaries only, no names, emails or chat ids | 🟡 (step C) |
 | Over-collection | No GPS, microphone or camera; summaries instead of raw data | ✅ |
 | Data kept forever, or stored overseas | Retention and residency policy | 🟡 (ADR 0022, proposed) |
@@ -106,7 +106,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Threat | Measure | Status |
 |---|---|---|
 | Huge requests exhaust memory | 1 MB body limit, 10,000 readings per batch | ✅ |
-| Flood of requests from one device | Per-device rate limiting | 🟡 (step A, ADR 0020) |
+| Flood of requests from one device | Per-device rate limiting on `/v1/readings`: `ingest.batches_per_minute_per_device`, then 429 with `Retry-After` (in memory, one instance) | ✅ (ADR 0020) |
 | Strangers keep the database awake (cost) | `/health` never touches the database; `/health/db` needs the API key | ✅ |
 | Strangers use up Gemini quota | `/chat` needs the API key | ✅ |
 | Sign-in link requests used to flood someone's inbox or our email quota | Rate limits per address and per IP | 🟡 (step D) |

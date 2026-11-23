@@ -3,6 +3,7 @@
 The engine is created on first use, so importing the app (for example in
 tests that don't need a database) never opens a connection.
 """
+
 import os
 
 from sqlalchemy import create_engine
@@ -19,21 +20,23 @@ def normalize_url(url: str) -> str:
     """
     for prefix in ("postgresql://", "postgres://"):
         if url.startswith(prefix):
-            return "postgresql+psycopg://" + url[len(prefix):]
+            return "postgresql+psycopg://" + url[len(prefix) :]
     return url
 
 
 def database_url() -> str:
+    """The database URL from DATABASE_URL, set up for the psycopg driver."""
     return normalize_url(os.environ["DATABASE_URL"])
 
 
 def get_engine() -> Engine:
+    """The shared database engine, created on first use."""
     global _engine
     if _engine is None:
         _engine = create_engine(
             database_url(),
             pool_pre_ping=True,  # Neon closes idle connections when it sleeps; check before use
-            pool_recycle=300,    # replace connections older than 5 minutes
+            pool_recycle=300,  # replace connections older than 5 minutes
             pool_size=3,
             max_overflow=2,
         )

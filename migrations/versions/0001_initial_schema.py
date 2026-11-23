@@ -6,6 +6,7 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-11-16
 """
+
 from alembic import op
 
 revision = "0001"
@@ -15,6 +16,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Create the first tables."""
     # One row per phone. token_hash holds a SHA-256 hash of the phone's token (Stage B);
     # the token itself is never stored.
     op.execute("""
@@ -75,6 +77,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Drop the first tables."""
     op.execute("DROP TABLE minute_summary")
     op.execute("DROP TABLE step_readings")
     op.execute("DROP TABLE ingested_batches")

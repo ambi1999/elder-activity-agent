@@ -1,0 +1,5 @@
+{
+  "type": "phone-sensor-logger/provisioning",
+  "version": 1,
+  "endpoint": "https://example.onrender.com/v1/readings"
+}

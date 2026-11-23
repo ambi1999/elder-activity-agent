@@ -7,10 +7,12 @@
 Automatic function calling is switched off on purpose so the loop is
 visible here. That loop is the core of every agent you'll build.
 """
+
 import json
 import logging
 import os
 import sys
+from typing import Any
 
 from google import genai
 from google.genai import types
@@ -29,9 +31,11 @@ SYSTEM_PROMPT = (
     "or arithmetic, use the tools instead of guessing. Keep answers short."
 )
 
-_client = None
+_client: genai.Client | None = None
+
 
 def _get_client() -> genai.Client:
+    """The Gemini client, created on first use."""
     # Created on first use, so importing this module (e.g. in tests)
     # doesn't need an API key.
     global _client
@@ -45,17 +49,18 @@ def _get_client() -> genai.Client:
         )
     return _client
 
-def run_agent(message: str) -> dict:
+
+def run_agent(message: str) -> dict[str, Any]:
     """Answer a message, using tools as needed. Returns the answer plus a trace of tool calls."""
     client = _get_client()
     config = types.GenerateContentConfig(
         system_instruction=SYSTEM_PROMPT,
         tools=list(TOOLS.values()),
         automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
-        thinking_config=types.ThinkingConfig(thinking_level="low"),
+        thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
     )
     contents = [types.Content(role="user", parts=[types.Part(text=message)])]
-    trace = []
+    trace: list[dict[str, Any]] = []
 
     for _ in range(MAX_STEPS):
         response = client.models.generate_content(model=MODEL, contents=contents, config=config)
@@ -65,16 +70,18 @@ def run_agent(message: str) -> dict:
             return {"answer": response.text or "", "tool_calls": trace}
 
         # Keep the model's tool request in the history, then add the results.
-        contents.append(response.candidates[0].content)
-        result_parts = []
+        model_turn = response.candidates[0].content if response.candidates else None
+        if model_turn is None:  # the model asked for tools but sent no message to keep
+            return {"answer": response.text or "", "tool_calls": trace}
+        contents.append(model_turn)
+        result_parts: list[types.Part] = []
         for call in calls:
+            name = call.name or ""
             args = dict(call.args or {})
-            result = run_tool(call.name, args)
-            log.info("tool=%s args=%s result=%s", call.name, args, result)
-            trace.append({"tool": call.name, "args": args, "result": result})
-            result_parts.append(
-                types.Part.from_function_response(name=call.name, response={"result": result})
-            )
+            result = run_tool(name, args)
+            log.info("tool=%s args=%s result=%s", name, args, result)
+            trace.append({"tool": name, "args": args, "result": result})
+            result_parts.append(types.Part.from_function_response(name=name, response={"result": result}))
         contents.append(types.Content(role="user", parts=result_parts))
 
     return {"answer": "Sorry, I couldn't finish that within the step limit.", "tool_calls": trace}

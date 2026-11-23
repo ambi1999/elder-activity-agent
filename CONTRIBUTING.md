@@ -48,6 +48,17 @@ The aim: a reader who doesn't know the code can tell **what each part is for and
 - **Templates** (Jinja2) get a comment at the top saying which page or fragment they render and which route uses them.
 - **TODOs** name an issue: `# TODO(#42): ...`.
 
+## Checks to run before pushing
+
+```bash
+uv run ruff check .          # lint and docstrings
+uv run ruff format .         # formatting
+uv run mypy                  # types
+uv run pytest                # tests (database tests need: docker compose up -d)
+```
+
+Or once: `uvx pre-commit install`, and the first three run on every commit.
+
 ## Style (checked)
 
 - Type hints on every function; mypy must pass.

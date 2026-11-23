@@ -28,7 +28,8 @@ An AI agent that watches phone sensor data (movement, light, charging) for signs
 
 | Endpoint | Auth | Description |
 |---|---|---|
-| `POST /ingest` | Device token (`Authorization` header) | Receives a batch from a phone; returns `status` (`ok` or `duplicate`) and counts of readings `stored`, `ignored` and `dropped` |
+| `POST /v1/readings` | Device token (`Authorization: Bearer`) | Receives a [phone-sensor-logger protocol v1](protocol/README.md) batch; returns `status` (`ok` or `duplicate`) and counts `stored`, `ignored` and `dropped`; errors as Problem Details (401, 413, 422, 429, 503) |
+| `POST /ingest` | Device token (`Authorization` header) | Sensor Logger batches, kept until no test phone uses it (ADR 0014) |
 | `POST /chat` | `X-API-Key` | Tool-using agent; returns the answer and a trace of tool calls |
 | `GET /health` | none | App status and deployed commit (never touches the database) |
 | `GET /health/db` | `X-API-Key` | Database connectivity and schema revision |
@@ -49,6 +50,10 @@ uv run pytest -rs                 # without a database: database tests are skipp
 uv run --env-file .env uvicorn app.main:app --reload   # http://localhost:8000/docs
 ```
 
+Before pushing, run the same checks as CI: `uv run ruff check .`, `uv run ruff format .` and `uv run mypy` (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+
+Behaviour is configured in [`config/settings.toml`](config/settings.toml): every setting is commented with its unit and allowed range, and any one can be overridden with an environment variable named `SECTION__KEY`, for example `PAIRING__PENDING_TOKEN_EXPIRY_MINUTES=60`.
+
 Tests never touch the production database: they use `TEST_DATABASE_URL` and refuse to run against Neon.
 
 | Variable | Purpose |
@@ -59,7 +64,20 @@ Tests never touch the production database: they use `TEST_DATABASE_URL` and refu
 | `TEST_DATABASE_URL` | Local Docker database for tests |
 | `DEVICE_TOKEN` | Optional; a phone's token, for `scripts/check_token.py` |
 
-## Managing phones
+## Households and phones
+
+Until the family web app exists, households are set up from the command line ([ADR 0024](docs/adr/0024-households-and-pairing.md)):
+
+```bash
+uv run --env-file .env python scripts/household.py create --name "Family 1" --person Mum --timezone Australia/Brisbane
+uv run --env-file .env python scripts/household.py add-phone --person PERSON_ID --name "Mum's phone"
+uv run --env-file .env python scripts/household.py list
+uv run --env-file .env python scripts/household.py revoke DEVICE_ID
+```
+
+`add-phone` prints the setup QR code once, in the terminal: scan it in phone-sensor-logger (Settings > Connection > Scan setup QR code), and the phone's owner agrees on its consent screen. The code holds the device token, so don't screenshot or share it. It works for `pairing.pending_token_expiry_minutes` (default 30) unless the phone's first data arrives sooner; after that the phone is active. Only a hash of the token is stored.
+
+Phones that use the Sensor Logger app are registered directly:
 
 ```bash
 uv run --env-file .env python scripts/register_device.py add --name "Test phone" --timezone Australia/Brisbane
@@ -86,7 +104,7 @@ Full plan: [docs/ROADMAP.md](docs/ROADMAP.md). User stories: [docs/backlog/worki
 - [x] **Phase 1, Stage B:** per-device tokens, idempotent ingestion, per-minute summaries
 - [x] Security baseline: threat model, supply-chain checks, request limits
 - [x] Phone app: phone-sensor-logger, a separate product in a private repository (ADR 0023)
-- [ ] **Step A:** foundations (typed settings, ruff, mypy), `POST /v1/readings` for the logger's protocol v1, households and QR pairing by script
+- [x] **Step A:** foundations (typed settings, ruff, mypy), `POST /v1/readings` for the logger's protocol v1, households and QR pairing by script
 - [ ] **Step B (logger):** connect by QR with consent, uploads
 - [ ] **Step C:** inactivity and phone-silent alerts by Telegram and email (**working prototype**)
 - [ ] **Step D:** family web app: sign-in, today and past days, add phone, contacts; brand from configuration

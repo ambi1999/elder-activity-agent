@@ -1,0 +1,9 @@
+{
+  "protocol": "phone-sensor-logger/v1",
+  "session_id": "s1",
+  "batch_seq": -1,
+  "sent_at": 1794820000000,
+  "timezone": "UTC",
+  "readings": [],
+  "summaries": []
+}

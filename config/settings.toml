@@ -1,0 +1,58 @@
+# Settings for Elder Activity Agent (ADR 0027 era, story A-1).
+#
+# Every behaviour that someone might reasonably want to tune lives here, not in
+# code. Each value says what it does, its unit (also in its name) and its
+# allowed range; app/settings.py enforces the range when the app starts and
+# refuses to start, naming the setting, if a value is wrong.
+#
+# Override any value for one environment with an environment variable named
+# SECTION__KEY in capitals, for example:
+#   PAIRING__PENDING_TOKEN_EXPIRY_MINUTES=60
+#   INGEST__ACCEPTED_SENSORS=steps_total,screen,battery
+#
+# Secrets (API keys, database URLs) never go here: they stay in environment
+# variables (.env locally, the hosting platform in production).
+
+[server]
+# Public HTTPS address of this service, without a trailing slash. Phones are
+# given "<public_url>/v1/readings" as their upload endpoint in the setup QR code.
+public_url = "https://elder-activity-agent.onrender.com"
+
+[pairing]
+# Minutes a newly added phone has to send its first data before its setup QR
+# code stops working (ADR 0024). Shorter is safer if a photo of the code leaks;
+# longer gives a slow helper more time. Allowed: 5 to 1440 (one day).
+pending_token_expiry_minutes = 30
+
+# Settings profile recommended to the phone in the QR code: which sensors the
+# logger switches on. "activity" has no location (ADR 0022, ADR 0023).
+# Allowed: "minimal", "activity", "full".
+device_profile = "activity"
+
+[ingest]
+# Largest request body accepted, in bytes. Protocol v1 requires receivers to
+# accept at least 1 MB. Allowed: 1000000 to 10000000.
+max_body_bytes = 1000000
+
+# Most readings, or most summaries, in one batch. Protocol v1 requires at least
+# 10,000. A larger batch is refused with 413 so the phone splits it.
+# Allowed: 10000 to 50000.
+max_items_per_batch = 10000
+
+# Readings stamped further in the future than this are dropped (the phone's
+# clock is wrong). Allowed: 0 to 60 minutes.
+max_future_minutes = 5
+
+# Protocol v1 readings older than this are dropped: retention is 7 days anyway
+# (ADR 0022), and much older data usually means a wrong clock. Allowed: 1 to 30 days.
+max_reading_age_days = 7
+
+# Batches one phone may send per minute before getting 429 Too Many Requests
+# (ADR 0020). A phone normally sends one every 15 minutes, more when catching up
+# after being offline. Allowed: 1 to 600.
+batches_per_minute_per_device = 30
+
+# Sensors that are stored; anything else is counted as "ignored" and never
+# stored. Location can never be listed here (ADR 0022).
+# Allowed: any of steps_total, light_lux, battery, screen, activity, motion.
+accepted_sensors = ["steps_total", "light_lux", "battery", "screen", "activity", "motion"]

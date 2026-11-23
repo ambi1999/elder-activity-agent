@@ -1,6 +1,7 @@
-from app.tools import calculate, get_current_time, run_tool
 from datetime import date, timedelta
+
 from app.tools import calculate, days_until, get_current_time, run_tool
+
 
 def test_calculate_basic():
     assert calculate("17 * 23") == "391"
@@ -27,6 +28,7 @@ def test_get_current_time():
 def test_run_tool_unknown_and_bad_args():
     assert run_tool("nope", {}).startswith("Error")
     assert run_tool("calculate", {"wrong": "x"}).startswith("Error")
+
 
 def test_days_until():
     future = (date.today() + timedelta(days=10)).isoformat()

@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:phone-sensor-logger:protocol:v1:batch",
+  "title": "phone-sensor-logger protocol v1: upload batch",
+  "description": "One upload from a phone. See protocol/v1.md for the meaning of each field and the rules senders and receivers follow. Unknown properties and unknown sensors are allowed so the protocol can grow without breaking older receivers.",
+  "type": "object",
+  "required": ["protocol", "session_id", "batch_seq", "sent_at", "timezone", "readings", "summaries"],
+  "properties": {
+    "protocol": { "const": "phone-sensor-logger/v1" },
+    "session_id": {
+      "description": "Identifies one logging session; a new one starts each time logging (re)starts.",
+      "type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "batch_seq": {
+      "description": "Batch number within the session, starting at 0 and increasing by 1.",
+      "type": "integer", "minimum": 0, "maximum": 9007199254740991
+    },
+    "sent_at": { "$ref": "#/$defs/timestamp", "description": "When the batch was sent, by the phone's clock." },
+    "timezone": {
+      "description": "The phone's IANA timezone when the batch was sent, e.g. Australia/Brisbane.",
+      "type": "string", "minLength": 1, "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$"
+    },
+    "app": {
+      "description": "Optional information about the sending app.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "version": { "type": "string", "maxLength": 50 },
+        "platform": { "type": "string", "maxLength": 50 },
+        "os_version": { "type": "string", "maxLength": 50 }
+      }
+    },
+    "readings": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/reading" } },
+    "summaries": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/summary" } }
+  },
+
+  "$defs": {
+    "timestamp": {
+      "description": "Milliseconds since 1970-01-01T00:00:00Z (UTC). Upper bound is 2100-01-01.",
+      "type": "integer", "minimum": 0, "maximum": 4102444800000
+    },
+    "sensor_name": {
+      "description": "Lower-case sensor identifier. Receivers ignore names they don't recognise.",
+      "type": "string", "pattern": "^[a-z][a-z0-9_]{0,49}$"
+    },
+
+    "reading": {
+      "description": "One raw value at one moment. Fields depend on the sensor.",
+      "type": "object",
+      "required": ["sensor", "t"],
+      "properties": {
+        "sensor": { "$ref": "#/$defs/sensor_name" },
+        "t": { "$ref": "#/$defs/timestamp" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "sensor": { "const": "steps_total" } } },
+          "then": {
+            "required": ["value"],
+            "properties": { "value": { "type": "integer", "minimum": 0 } }
+          }
+        },
+        {
+          "if": { "properties": { "sensor": { "const": "light_lux" } } },
+          "then": {
+            "required": ["value"],
+            "properties": { "value": { "type": "number", "minimum": 0 } }
+          }
+        },
+        {
+          "if": { "properties": { "sensor": { "const": "battery" } } },
+          "then": {
+            "required": ["level", "charging"],
+            "properties": {
+              "level": { "type": "number", "minimum": 0, "maximum": 1 },
+              "charging": { "type": "boolean" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "sensor": { "const": "screen" } } },
+          "then": {
+            "required": ["on"],
+            "properties": { "on": { "type": "boolean" } }
+          }
+        },
+        {
+          "if": { "properties": { "sensor": { "const": "activity" } } },
+          "then": {
+            "required": ["type"],
+            "properties": {
+              "type": { "enum": ["still", "walking", "running", "on_bicycle", "in_vehicle", "tilting", "unknown"] },
+              "confidence": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "sensor": { "const": "motion" } } },
+          "then": {
+            "required": ["value"],
+            "properties": { "value": { "type": "number", "minimum": 0 } }
+          }
+        },
+        {
+          "if": { "properties": { "sensor": { "const": "location" } } },
+          "then": {
+            "required": ["lat", "lon", "accuracy_m"],
+            "properties": {
+              "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+              "lon": { "type": "number", "minimum": -180, "maximum": 180 },
+              "accuracy_m": { "type": "number", "minimum": 0 }
+            }
+          }
+        }
+      ]
+    },
+
+    "summary": {
+      "description": "Aggregate of one numeric sensor over one UTC minute. Sums (not averages) so summaries for the same minute can be merged.",
+      "type": "object",
+      "required": ["sensor", "minute", "count", "sum", "min", "max"],
+      "properties": {
+        "sensor": { "$ref": "#/$defs/sensor_name" },
+        "minute": {
+          "description": "Start of the minute: a timestamp that is a whole number of minutes.",
+          "allOf": [ { "$ref": "#/$defs/timestamp" }, { "multipleOf": 60000 } ]
+        },
+        "count": { "type": "integer", "minimum": 1 },
+        "sum": { "type": "number" },
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      },
+      "allOf": [
+        {
+          "description": "These known sensors are only sent as readings, never as summaries.",
+          "if": { "properties": { "sensor": { "enum": ["steps_total", "battery", "screen", "activity", "location"] } } },
+          "then": false
+        },
+        {
+          "if": { "properties": { "sensor": { "enum": ["light_lux", "motion"] } } },
+          "then": {
+            "properties": {
+              "sum": { "minimum": 0 },
+              "min": { "minimum": 0 },
+              "max": { "minimum": 0 }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

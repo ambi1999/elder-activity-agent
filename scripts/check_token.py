@@ -3,8 +3,10 @@
 Put the current device token in .env as DEVICE_TOKEN, then:
     uv run --env-file .env python scripts/check_token.py https://your-url.onrender.com OLD_TOKEN
 """
+
 import os
 import sys
+from typing import Any
 
 import httpx
 
@@ -14,7 +16,8 @@ url = f"{base}/ingest"
 body = {"messageId": 1, "sessionId": "token-check", "deviceId": "check", "payload": []}
 
 
-def status(**kwargs) -> int:
+def status(**kwargs: Any) -> int:
+    """POST a test batch with the given httpx options; return the HTTP status."""
     return httpx.post(url, json=body, timeout=60, **kwargs).status_code
 
 

@@ -1,0 +1,24 @@
+{
+  "description": "Expected results for every example. 'schema_valid' is what the JSON Schema says. 'receiver' is what a conforming receiver must do: 'accept' (HTTP 200) or 'reject' (HTTP 422). Senders must only produce schema-valid batches; receivers must also tolerate bad items inside a valid envelope by ignoring them.",
+  "batch_schema": "../v1.schema.json",
+  "provisioning_schema": "../provisioning-v1.schema.json",
+  "batch": [
+    { "file": "batch/valid-01-steps-light-battery.json", "schema_valid": true,  "receiver": "accept", "note": "Typical raw readings." },
+    { "file": "batch/valid-02-minute-summaries.json",    "schema_valid": true,  "receiver": "accept", "note": "Per-minute summaries computed on the phone." },
+    { "file": "batch/valid-03-all-sensors.json",         "schema_valid": true,  "receiver": "accept", "note": "Every v1 sensor. Receivers store only sensors they accept." },
+    { "file": "batch/valid-04-heartbeat.json",           "schema_valid": true,  "receiver": "accept", "note": "Empty batch: tells the receiver the phone is alive." },
+    { "file": "batch/valid-05-forward-compatible.json",  "schema_valid": true,  "receiver": "accept", "note": "Unknown fields and sensors must be ignored, not rejected." },
+    { "file": "batch/tolerated-01-bad-items.json",       "schema_valid": false, "receiver": "accept", "note": "Valid envelope with bad items (level 1.5, negative steps, unaligned minute, steps as a summary). Receivers ignore those items and keep the rest." },
+    { "file": "batch/invalid-01-wrong-protocol.json",    "schema_valid": false, "receiver": "reject", "note": "Unsupported protocol version." },
+    { "file": "batch/invalid-02-missing-session-id.json","schema_valid": false, "receiver": "reject", "note": "Batch identity is required for idempotency." },
+    { "file": "batch/invalid-03-negative-batch-seq.json","schema_valid": false, "receiver": "reject", "note": "batch_seq starts at 0." },
+    { "file": "batch/invalid-04-readings-not-a-list.json","schema_valid": false,"receiver": "reject", "note": "readings must be an array." },
+    { "file": "batch/invalid-05-missing-timezone.json",  "schema_valid": false, "receiver": "reject", "note": "timezone is required." },
+    { "file": "batch/invalid-06-timestamps-in-seconds-as-text.json", "schema_valid": false, "receiver": "reject", "note": "Timestamps are integer milliseconds, not strings or seconds." }
+  ],
+  "provisioning": [
+    { "file": "provisioning/valid-01-qr-contents.json",   "schema_valid": true },
+    { "file": "provisioning/invalid-01-plain-http.json",  "schema_valid": false },
+    { "file": "provisioning/invalid-02-missing-token.json","schema_valid": false }
+  ]
+}

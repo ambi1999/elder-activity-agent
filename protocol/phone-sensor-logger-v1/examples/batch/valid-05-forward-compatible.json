@@ -1,0 +1,15 @@
+{
+  "protocol": "phone-sensor-logger/v1",
+  "session_id": "c0ffee00-0000-4000-8000-000000000001",
+  "batch_seq": 3,
+  "sent_at": 1794820000000,
+  "timezone": "UTC",
+  "future_top_level_field": "receivers must ignore this",
+  "readings": [
+    { "sensor": "heart_rate", "t": 1794819990000, "bpm": 72 },
+    { "sensor": "light_lux", "t": 1794819991000, "value": 85.5, "future_field": true }
+  ],
+  "summaries": [
+    { "sensor": "noise_db", "minute": 1794819960000, "count": 10, "sum": 400, "min": 35, "max": 48 }
+  ]
+}
