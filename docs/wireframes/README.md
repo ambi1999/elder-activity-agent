@@ -1,4 +1,6 @@
-# Wireframes: family web app
+# Wireframes: family and care web app
+
+**Clickable prototype:** [`docs/prototype/index.html`](../prototype/index.html) is a working mock of the app: every tab, link, back arrow and form works, with fictional data, a nurse and a family persona, and a guided tour ([README](../prototype/README.md)). It includes the care overview ([ADR 0028](../adr/0028-access-by-person-and-care-overview.md)). [`elder-activity-prototype.pdf`](../prototype/elder-activity-prototype.pdf) has the tour's screens, one per page, for presentations.
 
 Low-fidelity layouts for the family web app ([ADR 0025](../adr/0025-family-web-app.md)) and the alert messages ([ADR 0026](../adr/0026-rules-decide-llm-explains.md)). They show layout and content only; colours, fonts and the logo come from the brand file ([design.md](../design.md)). Names are neutral examples (Daughter as owner, Son as viewer, Mum as the person being looked after).
 
