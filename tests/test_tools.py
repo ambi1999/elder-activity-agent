@@ -35,3 +35,10 @@ def test_days_until():
     assert days_until(future).startswith("10 days")
     assert days_until(date.today().isoformat()).endswith("is today")
     assert days_until("not-a-date").startswith("Error")
+
+
+def test_errors_are_fixed_messages_not_exception_text():
+    # Exception text could reveal internals to /chat's caller (CWE-209).
+    assert calculate("1 +") == "Error: only numbers and + - * / // % ** ( ) are allowed"
+    assert calculate("2 ** 100000").startswith("Error: exponent too large")
+    assert run_tool("calculate", {"wrong": "x"}) == "Error: bad arguments for calculate; check the tool's parameters"

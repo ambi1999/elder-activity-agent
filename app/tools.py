@@ -5,6 +5,7 @@ The Gemini SDK reads these to tell the model what each tool does.
 """
 
 import ast
+import logging
 import operator
 from collections.abc import Callable
 from datetime import date, datetime
@@ -14,6 +15,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 # Only these operations are allowed in the calculator. Anything else
 # (function calls, names, attribute access) is rejected, so users can't
 # run arbitrary code the way they could with Python's eval().
+log = logging.getLogger(__name__)
+
 _OPS: dict[type, Callable[..., Any]] = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
@@ -42,6 +45,17 @@ def get_current_time(timezone: str = "UTC") -> str:
     return datetime.now(tz).strftime("%A %d %B %Y, %H:%M:%S %Z")
 
 
+# Tool errors go back to the model and appear in /chat's response, so they are
+# fixed messages: never the text of a caught exception, which could reveal
+# internals (CodeQL py/stack-trace-exposure, CWE-209). Details go to the log.
+EXPONENT_TOO_LARGE = f"Error: exponent too large (at most {MAX_EXPONENT})"
+NOT_ALLOWED = "Error: only numbers and + - * / // % ** ( ) are allowed"
+
+
+class _ExponentTooLarge(ValueError):
+    """An exponent above MAX_EXPONENT, which could take too long to compute."""
+
+
 def _evaluate(node: ast.AST) -> float:
     """Evaluate a parsed expression, allowing only numbers and the operators in _OPS."""
     if isinstance(node, ast.Expression):
@@ -51,7 +65,7 @@ def _evaluate(node: ast.AST) -> float:
     if isinstance(node, ast.BinOp) and type(node.op) in _OPS:
         left, right = _evaluate(node.left), _evaluate(node.right)
         if isinstance(node.op, ast.Pow) and abs(right) > MAX_EXPONENT:
-            raise ValueError("exponent too large")
+            raise _ExponentTooLarge
         return _OPS[type(node.op)](left, right)
     if isinstance(node, ast.UnaryOp) and type(node.op) in _OPS:
         return _OPS[type(node.op)](_evaluate(node.operand))
@@ -70,8 +84,10 @@ def calculate(expression: str) -> str:
         result = _evaluate(ast.parse(expression, mode="eval"))
     except ZeroDivisionError:
         return "Error: division by zero"
-    except (ValueError, SyntaxError, TypeError) as exc:
-        return f"Error: {exc}"
+    except _ExponentTooLarge:
+        return EXPONENT_TOO_LARGE
+    except (ValueError, SyntaxError, TypeError, OverflowError):
+        return NOT_ALLOWED
     return str(result)
 
 
@@ -107,5 +123,6 @@ def run_tool(name: str, args: dict[str, Any]) -> str:
         return f"Error: unknown tool '{name}'"
     try:
         return func(**args)
-    except TypeError as exc:
-        return f"Error: bad arguments for {name}: {exc}"
+    except TypeError:
+        log.warning("Tool %s called with bad arguments %s", name, sorted(args))
+        return f"Error: bad arguments for {name}; check the tool's parameters"
