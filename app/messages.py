@@ -118,3 +118,15 @@ def signin_link(product: str, link: str, minutes: int) -> Message:
             "If you didn't ask to sign in, ignore this email: nobody can sign in without the link."
         ),
     )
+
+
+def invitation(product: str, by: str, people: str, link: str, hours: int) -> Message:
+    """The email inviting someone to see a household in the web app (step D2)."""
+    return Message(
+        subject=f"{by} invited you to {product}",
+        text=(
+            f"{by} invited you to see how {people} is doing in {product}, and to get its alerts if they add you "
+            f"as a contact.\n\nOpen this link to sign in. It works once, for {hours} hours:\n\n{link}\n\n"
+            f"Later, sign in with this email address at the same site: a new link is emailed each time."
+        ),
+    )

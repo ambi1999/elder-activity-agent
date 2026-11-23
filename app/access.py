@@ -141,3 +141,78 @@ def open_alert_count(conn: Connection, user_id: uuid.UUID) -> int:
         {"user": user_id},
     ).scalar()
     return int(value or 0)
+
+
+@dataclass(frozen=True)
+class Phone:
+    """One of a person's phones, as the Phones page shows it."""
+
+    id: uuid.UUID
+    name: str
+    status: str  # "pending", "active" or "revoked"
+    last_seen_at: datetime | None
+    pending_expires_at: datetime | None
+    created_at: datetime
+
+
+def phones_for(conn: Connection, person_id: uuid.UUID) -> list[Phone]:
+    """A person's phones that are connected or waiting to connect, newest first (the person is already checked)."""
+    rows = conn.execute(
+        text("""
+            SELECT id, name, status, last_seen_at, pending_expires_at, created_at FROM devices
+            WHERE person_id = :person AND status <> 'revoked' ORDER BY created_at DESC
+        """),
+        {"person": person_id},
+    ).all()
+    return [Phone(*row) for row in rows]
+
+
+def phone_for(conn: Connection, person_id: uuid.UUID, device_id: uuid.UUID) -> Phone | None:
+    """One phone, only if it belongs to this (already checked) person."""
+    row = conn.execute(
+        text("""
+            SELECT id, name, status, last_seen_at, pending_expires_at, created_at FROM devices
+            WHERE id = :device AND person_id = :person
+        """),
+        {"device": device_id, "person": person_id},
+    ).first()
+    return Phone(*row) if row else None
+
+
+@dataclass(frozen=True)
+class OwnedHousehold:
+    """A household the user owns, for adding a person to it."""
+
+    id: uuid.UUID
+    name: str
+
+
+def households_owned(conn: Connection, user_id: uuid.UUID) -> list[OwnedHousehold]:
+    """The households where the user is an owner, by name."""
+    rows = conn.execute(
+        text("""
+            SELECT h.id, h.name FROM members m JOIN households h ON h.id = m.household_id
+            WHERE m.user_id = :user AND m.role = 'owner' ORDER BY lower(h.name)
+        """),
+        {"user": user_id},
+    ).all()
+    return [OwnedHousehold(*row) for row in rows]
+
+
+def user_summary(conn: Connection, user_id: uuid.UUID) -> list[tuple[str, str, list[str]]]:
+    """For scripts/household.py user: each household of the user, their role there and its people."""
+    rows = conn.execute(
+        text("""
+            SELECT h.id, h.name, m.role, p.display_name
+            FROM members m JOIN households h ON h.id = m.household_id
+            LEFT JOIN people p ON p.household_id = h.id
+            WHERE m.user_id = :user ORDER BY lower(h.name), lower(p.display_name)
+        """),
+        {"user": user_id},
+    ).all()
+    summary: dict[uuid.UUID, tuple[str, str, list[str]]] = {}
+    for household_id, name, role, person in rows:
+        entry = summary.setdefault(household_id, (name, role, []))
+        if person:
+            entry[2].append(person)
+    return list(summary.values())

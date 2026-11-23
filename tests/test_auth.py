@@ -99,3 +99,27 @@ def test_only_hashes_are_stored(migrated_db):
         stored = conn.execute(text("SELECT token_hash FROM signin_links")).scalars().all()
         sessions = conn.execute(text("SELECT id_hash FROM sessions")).scalars().all()
     assert token not in stored and session_id not in sessions
+
+
+def test_a_users_households_and_people(migrated_db):
+    from app import access
+
+    with migrated_db.begin() as conn:
+        mum = households.create_household(conn, "Household of Mum")
+        households.add_person(conn, mum.id, "Mum", "Australia/Brisbane")
+        empty = households.create_household(conn, "Empty")
+        user = auth.add_user(conn, "nurse@example.com", "Nurse")
+        auth.add_member(conn, user.id, mum.id, "owner")
+        auth.add_member(conn, user.id, empty.id, "viewer")
+        assert access.user_summary(conn, user.id) == [("Empty", "viewer", []), ("Household of Mum", "owner", ["Mum"])]
+        assert [h.name for h in access.households_owned(conn, user.id)] == ["Household of Mum"]
+        assert auth.owner_count(conn, mum.id) == 1
+
+
+def test_invitation_links_last_longer(migrated_db):
+    with migrated_db.begin() as conn:
+        user = auth.add_user(conn, "son@example.com", "Son")
+        link = auth.create_signin_link(conn, user, NOW, SETTINGS, lifetime=SETTINGS.web.invite_link_expiry)
+        token = link.rsplit("/", 1)[1]
+        assert auth.signin_link_is_valid(conn, token, NOW + timedelta(hours=71))
+        assert not auth.signin_link_is_valid(conn, token, NOW + timedelta(hours=73))

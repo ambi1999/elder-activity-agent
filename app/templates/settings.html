@@ -3,7 +3,7 @@
 {% block content %}
 <h2>You</h2>
 <ul class="list">
-  <li class="item"><span class="grow"><b>{{ me.display_name }}</b><small>{{ me.email }} · you sign in with this address</small></span></li>
+  <li><a class="item" href="/profile"><span class="grow"><b>{{ me.display_name }}</b><small>{{ me.email }} · you sign in with this address</small></span>{{ icon.chev() }}</a></li>
 </ul>
 <h2>{{ "People you look after" if people | length != 1 else "The person you look after" }}</h2>
 {% if people %}
@@ -11,6 +11,7 @@
   {% for p in people %}<li><a class="item" href="/people/{{ p.id }}"><span class="grow"><b>{{ p.display_name }}</b><small>{{ p.household_name }} · {{ "owner" if p.is_owner else "viewer" }}</small></span>{{ icon.chev() }}</a></li>{% endfor %}
 </ul>
 {% else %}<div class="card empty">Nobody yet.</div>{% endif %}
+<a class="btn secondary" href="/people/add">Add a person</a>
 <h2>App</h2>
 <ul class="list">
   <li><a class="item" href="/help"><span class="grow">Help</span>{{ icon.chev() }}</a></li>

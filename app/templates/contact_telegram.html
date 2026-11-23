@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<p>Send {{ contact.display_name }} this link. They open it in Telegram and press <b>Start</b>. It works once, for {{ minutes }} minutes, and is shown only now.</p>
+<div class="card mono">{{ link }}</div>
+<a class="btn secondary" href="/people/{{ person.id }}/contacts">Done</a>
+{% endblock %}

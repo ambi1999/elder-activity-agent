@@ -11,7 +11,8 @@
   <a class="btn secondary" href="/alerts/{{ s.alert.id }}">Open the alert</a>
 </div>
 {% elif s.level == "none" %}
-<div class="banner none">{{ icon.badge("none", s.words, true) }}<p>No phone is connected for {{ person.display_name }} yet.</p></div>
+<div class="banner none">{{ icon.badge("none", s.words, true) }}<p>No phone is connected for {{ person.display_name }} yet.</p>
+  {% if person.is_owner %}<a class="btn" href="/people/{{ person.id }}/phones/add">Add a phone</a>{% endif %}</div>
 {% else %}
 <div class="banner green">{{ icon.badge("green", s.words, true) }}<p>{% if last_active %}Last active {{ last_active }}.{% else %}No activity in the last 2 days.{% endif %}</p></div>
 {% endif %}
@@ -24,22 +25,14 @@
     {% if data_stale %}<p class="warntext">The phone hasn't sent anything for over an hour. This is about the phone, not necessarily about {{ person.display_name }}.</p>{% endif %}</div>
 </div>
 
-{% set top = [day.steps_by_hour | max, 1] | max %}
-<div class="card">
-  <b>Steps by hour, today</b>
-  {# The chart is a picture for sighted users; the table below has the same numbers for everyone. #}
-  <svg class="chart" viewBox="0 0 240 80" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-    {% for n in day.steps_by_hour %}{% set h = (n / top * 76) if n else 0 %}<rect x="{{ loop.index0 * 10 + 1 }}" y="{{ 78 - h }}" width="8" height="{{ h + 2 }}" rx="1"/>{% endfor %}
-  </svg>
-  <div class="axis" aria-hidden="true"><span>12 am</span><span>6 am</span><span>12 pm</span><span>6 pm</span><span>12 am</span></div>
-  <details><summary>Show as a table</summary>
-    {% if day.steps %}
-    <table><caption class="sr-only">Steps by hour today</caption>
-      <thead><tr><th scope="col">Hour</th><th scope="col">Steps</th></tr></thead>
-      <tbody>{% for hour in range(24) if day.steps_by_hour[hour] %}<tr><td>{{ "%02d:00" | format(hour) }}</td><td>{{ day.steps_by_hour[hour] }}</td></tr>{% endfor %}</tbody>
-    </table>
-    {% else %}<p>No steps recorded today yet.</p>{% endif %}
-  </details>
-</div>
+{% set is_today = true %}{% include "_day_chart.html" %}
+
+<ul class="list">
+  <li><a class="item" href="/people/{{ person.id }}/days"><span class="grow">Past days</span>{{ icon.chev() }}</a></li>
+  <li><a class="item" href="/people/{{ person.id }}/phones"><span class="grow">Phones</span>{{ icon.chev() }}</a></li>
+  <li><a class="item" href="/people/{{ person.id }}/alert-times"><span class="grow">Alert times</span>{{ icon.chev() }}</a></li>
+  <li><a class="item" href="/people/{{ person.id }}/contacts"><span class="grow">Contacts<small>Who gets alerts</small></span>{{ icon.chev() }}</a></li>
+  <li><a class="item" href="/people/{{ person.id }}/members"><span class="grow">Members<small>Who can see {{ person.display_name }}</small></span>{{ icon.chev() }}</a></li>
+</ul>
 <p class="muted small">{{ person.household_name }} · {{ person.timezone }} · you are {{ "an owner" if person.is_owner else "a viewer" }}</p>
 {% endblock %}

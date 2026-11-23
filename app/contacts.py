@@ -11,7 +11,6 @@ address or a stranger's chat:
 Links expire after ``alerts.link_expiry_minutes`` and only their hashes are stored.
 """
 
-import re
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -22,9 +21,9 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from app.devices import hash_token
+from app.emails import looks_like_email
 from app.settings import Settings
 
-EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 CHANNELS = ("email", "telegram")
 
 
@@ -103,7 +102,7 @@ def add_contact(
     address = None
     if channel == "email":
         address = (email or "").strip().lower()
-        if not EMAIL.match(address):
+        if not looks_like_email(address):
             raise ValueError("That doesn't look like an email address.")
     elif not settings.telegram.bot_username:
         raise ValueError("Set telegram.bot_username in config/settings.toml first (the bot's name from @BotFather).")

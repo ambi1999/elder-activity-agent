@@ -107,7 +107,7 @@ Each alert goes to the household's confirmed contacts by Telegram (with an "I'm 
 
 A GitHub Actions schedule (`.github/workflows/check-alerts.yml`) calls `POST /jobs/check-alerts` every 5 minutes.
 
-**Contacts and settings** (until the web app's settings pages, step D2):
+**Contacts and settings from the command line** (the same as the web app's pages):
 
 ```bash
 uv run --env-file .env python scripts/household.py add-contact --household HOUSEHOLD_ID --name Daughter --telegram
@@ -135,12 +135,14 @@ Without `TELEGRAM_BOT_TOKEN` or `RESEND_API_KEY`, messages are written to the lo
 The family and care web app is served by the same service ([ADR 0025](docs/adr/0025-family-web-app.md), [ADR 0028](docs/adr/0028-access-by-person-and-care-overview.md)). Open the service's address (locally `http://localhost:8000/`) and sign in with an emailed link: there are no passwords.
 
 - **Who sees what:** a user sees every person in the households they are a member of. Someone with one person goes straight to that person's day; someone with several (a nurse) gets the **care overview** first: needs attention (red), phone not sending (amber), all OK (green), each with an icon and words. Pages about anyone else answer 404.
-- **Pages:** the overview, a person's day (status, steps, active hours, battery, when the phone last sent, steps by hour with a table version), alerts with **I'm checking**, settings, help and about. Past days, phones, contacts, alert times and members arrive in step D2.
-- **Accounts are invite only while testing.** Give someone access to a household, as `owner` (may change settings, from step D2) or `viewer`:
+- **Pages:** the overview, a person's day (status, steps, active hours, battery, when the phone last sent, steps by hour with a table version), past days (7), alerts with **I'm checking**, settings, help and about.
+- **Managing (owners):** add a phone (the setup QR code is shown once, and the page says when the phone connects) or remove one; alert times; contacts (they confirm by email before alerts reach them); members (invite by email, as owner or viewer; remove); add a person, in a new household or one you own. Viewers see the same pages without the forms, and the server refuses their changes (403). Your own name is under **Settings → Profile**.
+- **Accounts are invite only while testing.** An owner invites people from the household's **Members** page, or from the command line, as `owner` (may change settings) or `viewer`:
 
 ```bash
 uv run --env-file .env python scripts/household.py add-member --household HOUSEHOLD_ID --email daughter@example.com --name Daughter --role owner
 uv run --env-file .env python scripts/household.py members --household HOUSEHOLD_ID
+uv run --env-file .env python scripts/household.py user --email nurse@example.com   # their households, roles and people
 ```
 
   They then sign in at `/signin` with that address. While Resend can only email your own address (no verified domain yet), print a one-time link for another user instead, and open it in their browser:
@@ -175,7 +177,7 @@ Full plan: [docs/ROADMAP.md](docs/ROADMAP.md). User stories: [docs/backlog/worki
 - [ ] **Step B (logger):** connect by QR with consent, uploads
 - [x] **Step C:** inactivity and phone-silent alerts by Telegram and email (**working prototype**, tried with simulated phone data until logger step B)
 - [x] **Step D1:** web app: email sign-in, access by set of people, care overview, a person's day, alerts with I'm checking, brand from configuration
-- [ ] **Step D2:** web app: past days, phones (add by QR), contacts, alert times, members and invitations, add a person
+- [x] **Step D2:** web app: past days, phones (add by QR), contacts, alert times, members and invitations, add a person
 - [ ] **Backend SRS**, written from what was built
 - [ ] **Phases 2–5:** activity features, personal baseline, agent summaries, evaluation
 - [ ] Before real users: legal review, Australian hosting, least-privilege logins, retention

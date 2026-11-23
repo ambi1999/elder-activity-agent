@@ -62,20 +62,21 @@ CSP = (
 # ---------------------------------------------------------------------------
 
 
-def _now() -> datetime:
+def utc_now() -> datetime:
+    """The current time, in UTC."""
     return datetime.now(UTC)
 
 
-def _session(request: Request) -> auth.Session | None:
+def session_for(request: Request) -> auth.Session | None:
     """The signed-in user for this request's cookie, or None."""
     session_id = request.cookies.get(COOKIE, "")
     if not session_id:
         return None
     with db.get_engine().connect() as conn:
-        return auth.find_session(conn, session_id, _now())
+        return auth.find_session(conn, session_id, utc_now())
 
 
-def _same_site(request: Request) -> bool:
+def same_site(request: Request) -> bool:
     """Whether a form was submitted from this site (the Origin header, when the browser sends one)."""
     origin = request.headers.get("origin")
     if origin is None:
@@ -83,7 +84,7 @@ def _same_site(request: Request) -> bool:
     return urlsplit(origin).netloc == request.headers.get("host", "")
 
 
-def _client_ip(request: Request) -> str:
+def client_ip(request: Request) -> str:
     """The visitor's network address, for rate limits.
 
     Render's proxy adds the real address as the last entry of X-Forwarded-For;
@@ -95,14 +96,15 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _parse_id(value: str) -> uuid.UUID | None:
+def parse_id(value: str) -> uuid.UUID | None:
+    """An id from a URL, or None if it isn't one (the page then answers 404)."""
     try:
         return uuid.UUID(value)
     except ValueError:
         return None
 
 
-def _render(
+def render(
     request: Request,
     template: str,
     context: dict[str, Any],
@@ -143,18 +145,18 @@ def _render(
     return response
 
 
-def _not_found(request: Request, session: auth.Session | None) -> HTMLResponse:
+def not_found(request: Request, session: auth.Session | None) -> HTMLResponse:
     """The same answer for "doesn't exist" and "not yours" (story C3-5)."""
-    return _render(request, "not_found.html", {"title": "Not found"}, session, status=404)
+    return render(request, "not_found.html", {"title": "Not found"}, session, status=404)
 
 
-def _refused(request: Request, session: auth.Session | None) -> HTMLResponse:
+def refused(request: Request, session: auth.Session | None) -> HTMLResponse:
     """A form that didn't come from this site, or whose CSRF token is wrong or old."""
     body = {"title": "Please try again", "text": "This form had expired. Go back, reload the page and try again."}
-    return _render(request, "message.html", body, session, status=403)
+    return render(request, "message.html", body, session, status=403)
 
 
-def _to(url: str) -> RedirectResponse:
+def go(url: str) -> RedirectResponse:
     """Go to another page after a form (303, so the browser fetches it with GET)."""
     return RedirectResponse(url, status_code=303)
 
@@ -167,39 +169,39 @@ def _to(url: str) -> RedirectResponse:
 @router.get("/", include_in_schema=False)
 def start(request: Request) -> Response:
     """Send the visitor to the right first page."""
-    session = _session(request)
+    session = session_for(request)
     if session is None:
-        return _to("/signin")
+        return go("/signin")
     with db.get_engine().connect() as conn:
         people = access.people_for(conn, session.user.id)
     # Someone looking after one person goes straight to that person's day (ADR 0028).
-    return _to(f"/people/{people[0].id}" if len(people) == 1 else "/people")
+    return go(f"/people/{people[0].id}" if len(people) == 1 else "/people")
 
 
 @router.get("/signin", response_class=HTMLResponse, include_in_schema=False)
 def signin_page(request: Request, out: int = 0) -> Response:
     """The sign-in form."""
-    if _session(request) is not None:
-        return _to("/")
+    if session_for(request) is not None:
+        return go("/")
     notice = "You're signed out." if out else ""
-    return _render(request, "signin.html", {"title": "Sign in", "notice": notice, "email": "", "error": ""})
+    return render(request, "signin.html", {"title": "Sign in", "notice": notice, "email": "", "error": ""})
 
 
 @router.post("/signin", response_class=HTMLResponse, include_in_schema=False)
 def signin_submit(request: Request, background: BackgroundTasks, email: str = Form("")) -> Response:
     """Email a one-time link if the address has an account; the answer is the same either way."""
-    if not _same_site(request):
-        return _refused(request, None)
+    if not same_site(request):
+        return refused(request, None)
     try:
         address = auth.normalize_email(email)
     except ValueError as err:
         context = {"title": "Sign in", "notice": "", "email": email, "error": str(err)}
-        return _render(request, "signin.html", context, status=400)
+        return render(request, "signin.html", context, status=400)
 
-    settings, now = get_settings(), _now()
-    if rate_limit.signin_by_ip.check(_client_ip(request), settings.web.signin_requests_per_hour_per_ip, now):
+    settings, now = get_settings(), utc_now()
+    if rate_limit.signin_by_ip.check(client_ip(request), settings.web.signin_requests_per_hour_per_ip, now):
         body = {"title": "Too many tries", "text": "Too many sign-in requests from this network. Try again later."}
-        return _render(request, "message.html", body, status=429)
+        return render(request, "message.html", body, status=429)
 
     # Over the per-address limit, the page looks the same but no email is sent,
     # so nobody can flood someone's inbox by typing their address.
@@ -211,7 +213,7 @@ def signin_submit(request: Request, background: BackgroundTasks, email: str = Fo
             # Sent after the response, so known and unknown addresses take the same time to answer.
             background.add_task(_send_signin_email, address, link)
     sent = {"title": "Check your email", "email": address, "minutes": settings.web.signin_link_minutes}
-    return _render(request, "signin_sent.html", sent)
+    return render(request, "signin_sent.html", sent)
 
 
 def _send_signin_email(address: str, link: str) -> None:
@@ -224,24 +226,24 @@ def _send_signin_email(address: str, link: str) -> None:
 def signin_link_page(request: Request, token: str) -> Response:
     """A page with a "Sign in" button: opening the link alone doesn't sign in (email scanners open links)."""
     with db.get_engine().connect() as conn:
-        valid = auth.signin_link_is_valid(conn, token, _now())
+        valid = auth.signin_link_is_valid(conn, token, utc_now())
     if not valid:
-        return _render(request, "signin_invalid.html", {"title": "Link not valid"}, status=404)
-    return _render(request, "signin_link.html", {"title": "Sign in"})
+        return render(request, "signin_invalid.html", {"title": "Link not valid"}, status=404)
+    return render(request, "signin_link.html", {"title": "Sign in"})
 
 
 @router.post("/signin/link/{token}", response_class=HTMLResponse, include_in_schema=False)
 def signin_link_use(request: Request, token: str) -> Response:
     """Use the link, start a session and set its cookie."""
-    if not _same_site(request):
-        return _refused(request, None)
-    settings, now = get_settings(), _now()
+    if not same_site(request):
+        return refused(request, None)
+    settings, now = get_settings(), utc_now()
     with db.get_engine().begin() as conn:
         user = auth.use_signin_link(conn, token, now)
         session_id = auth.create_session(conn, user.id, now, settings) if user else None
     if session_id is None:
-        return _render(request, "signin_invalid.html", {"title": "Link not valid"}, status=404)
-    response = _to("/")
+        return render(request, "signin_invalid.html", {"title": "Link not valid"}, status=404)
+    response = go("/")
     response.set_cookie(
         COOKIE,
         session_id,
@@ -257,13 +259,13 @@ def signin_link_use(request: Request, token: str) -> Response:
 @router.post("/signout", include_in_schema=False)
 def signout(request: Request, csrf: str = Form("")) -> Response:
     """Sign this browser out."""
-    session = _session(request)
+    session = session_for(request)
     if session is not None:
-        if not (_same_site(request) and auth.csrf_matches(session, csrf)):
-            return _refused(request, session)
+        if not (same_site(request) and auth.csrf_matches(session, csrf)):
+            return refused(request, session)
         with db.get_engine().begin() as conn:
             auth.end_session(conn, request.cookies.get(COOKIE, ""))
-    response = _to("/signin?out=1")
+    response = go("/signin?out=1")
     response.delete_cookie(COOKIE, path="/", secure=True, httponly=True, samesite="lax")
     return response
 
@@ -274,7 +276,7 @@ def signout(request: Request, csrf: str = Form("")) -> Response:
 
 
 def _statuses(session: auth.Session) -> list[overview.Status]:
-    now = _now()
+    now = utc_now()
     with db.get_engine().connect() as conn:
         people = access.people_for(conn, session.user.id)
         all_alerts = access.alerts_for(conn, session.user.id, now - RECENT)
@@ -284,12 +286,12 @@ def _statuses(session: auth.Session) -> list[overview.Status]:
 @router.get("/people", response_class=HTMLResponse, include_in_schema=False)
 def people_page(request: Request) -> Response:
     """The care overview: who needs attention first."""
-    session = _session(request)
+    session = session_for(request)
     if session is None:
-        return _to("/signin")
+        return go("/signin")
     statuses = _statuses(session)
     if len(statuses) == 1:
-        return _to(f"/people/{statuses[0].person.id}")
+        return go(f"/people/{statuses[0].person.id}")
     context = {
         "title": f"My people · {len(statuses)}" if statuses else "My people",
         "tab": "people",
@@ -297,31 +299,31 @@ def people_page(request: Request) -> Response:
         "counts": overview.counts(statuses),
         "refresh": get_settings().web.overview_refresh_seconds,
     }
-    return _render(request, "overview.html", context, session)
+    return render(request, "overview.html", context, session)
 
 
 @router.get("/people/list", response_class=HTMLResponse, include_in_schema=False)
 def people_list(request: Request) -> Response:
     """Just the overview's list, which the page's script swaps in to refresh it."""
-    session = _session(request)
+    session = session_for(request)
     if session is None:
         return Response(status_code=401)
     statuses = _statuses(session)
     context = {"statuses": statuses, "counts": overview.counts(statuses)}
-    return _render(request, "_overview_list.html", context, session)
+    return render(request, "_overview_list.html", context, session)
 
 
 @router.get("/people/{person_id}", response_class=HTMLResponse, include_in_schema=False)
 def person_page(request: Request, person_id: str) -> Response:
     """A person's day: their status, today's numbers, activity by hour, the phone (story D-1)."""
-    session = _session(request)
+    session = session_for(request)
     if session is None:
-        return _to("/signin")
-    pid, now = _parse_id(person_id), _now()
+        return go("/signin")
+    pid, now = parse_id(person_id), utc_now()
     with db.get_engine().connect() as conn:
         person = access.person_for(conn, session.user.id, pid) if pid else None
         if person is None:
-            return _not_found(request, session)
+            return not_found(request, session)
         unresolved = [a for a in access.alerts_for(conn, session.user.id, now, person.id) if a.status != "resolved"]
         status = overview.person_status(conn, person, unresolved, now, get_settings(), session.user.display_name)
         day = overview.day_activity(conn, person, overview.today(now, person.timezone))
@@ -340,7 +342,7 @@ def person_page(request: Request, person_id: str) -> Response:
         "last_data": overview.ago(status.last_data_at, now) if status.last_data_at else None,
         "data_stale": data_age is not None and data_age > overview.STALE_DATA,
     }
-    return _render(request, "person.html", context, session)
+    return render(request, "person.html", context, session)
 
 
 # ---------------------------------------------------------------------------
@@ -351,10 +353,10 @@ def person_page(request: Request, person_id: str) -> Response:
 @router.get("/alerts", response_class=HTMLResponse, include_in_schema=False)
 def alerts_page(request: Request) -> Response:
     """Open alerts, then those closed in the last week."""
-    session = _session(request)
+    session = session_for(request)
     if session is None:
-        return _to("/signin")
-    now = _now()
+        return go("/signin")
+    now = utc_now()
     with db.get_engine().connect() as conn:
         found = access.alerts_for(conn, session.user.id, now - RECENT)
     context = {
@@ -364,20 +366,20 @@ def alerts_page(request: Request) -> Response:
         "closed": [a for a in found if a.status == "resolved"],
         "now": now,
     }
-    return _render(request, "alerts.html", context, session)
+    return render(request, "alerts.html", context, session)
 
 
 @router.get("/alerts/{alert_id}", response_class=HTMLResponse, include_in_schema=False)
 def alert_page(request: Request, alert_id: str, done: str = "") -> Response:
     """One alert: what the rule saw, the explanation, and "I'm checking"."""
-    session = _session(request)
+    session = session_for(request)
     if session is None:
-        return _to("/signin")
-    aid, now = _parse_id(alert_id), _now()
+        return go("/signin")
+    aid, now = parse_id(alert_id), utc_now()
     with db.get_engine().connect() as conn:
         alert = access.alert_for(conn, session.user.id, aid) if aid else None
         if alert is None:
-            return _not_found(request, session)
+            return not_found(request, session)
         timing = alerts.get_timing(conn, alert.person.id, get_settings())
     hours = timing.inactive_hours if alert.rule == rules.INACTIVITY else timing.silent_hours
     notices = {"ack": "Thanks. Everyone has been told you're checking.", "already": "Someone is already checking."}
@@ -390,24 +392,24 @@ def alert_page(request: Request, alert_id: str, done: str = "") -> Response:
         "now": now,
         "notice": notices.get(done, ""),
     }
-    return _render(request, "alert.html", context, session)
+    return render(request, "alert.html", context, session)
 
 
 @router.post("/alerts/{alert_id}/ack", include_in_schema=False)
 def acknowledge(request: Request, alert_id: str, csrf: str = Form("")) -> Response:
     """Say "I'm checking": tell every contact who is checking, and stop the repeats."""
-    session = _session(request)
+    session = session_for(request)
     if session is None:
-        return _to("/signin")
-    if not (_same_site(request) and auth.csrf_matches(session, csrf)):
-        return _refused(request, session)
-    aid = _parse_id(alert_id)
+        return go("/signin")
+    if not (same_site(request) and auth.csrf_matches(session, csrf)):
+        return refused(request, session)
+    aid = parse_id(alert_id)
     with db.get_engine().begin() as conn:
         alert = access.alert_for(conn, session.user.id, aid) if aid else None
         if alert is None:
-            return _not_found(request, session)
-        done = alerts.acknowledge(conn, alert.id, session.user.display_name, _now(), get_settings(), get_notifiers())
-    return _to(f"/alerts/{alert.id}?done={'ack' if done else 'already'}")
+            return not_found(request, session)
+        done = alerts.acknowledge(conn, alert.id, session.user.display_name, utc_now(), get_settings(), get_notifiers())
+    return go(f"/alerts/{alert.id}?done={'ack' if done else 'already'}")
 
 
 # ---------------------------------------------------------------------------
@@ -418,31 +420,31 @@ def acknowledge(request: Request, alert_id: str, csrf: str = Form("")) -> Respon
 @router.get("/settings", response_class=HTMLResponse, include_in_schema=False)
 def settings_page(request: Request) -> Response:
     """The signed-in user, the people they look after, help, and Sign out."""
-    session = _session(request)
+    session = session_for(request)
     if session is None:
-        return _to("/signin")
+        return go("/signin")
     with db.get_engine().connect() as conn:
         people = access.people_for(conn, session.user.id)
-    return _render(request, "settings.html", {"title": "Settings", "tab": "settings", "people": people}, session)
+    return render(request, "settings.html", {"title": "Settings", "tab": "settings", "people": people}, session)
 
 
 @router.get("/help", response_class=HTMLResponse, include_in_schema=False)
 def help_page(request: Request) -> Response:
     """What the colours mean, and what this app is not."""
-    session = _session(request)
+    session = session_for(request)
     if session is None:
-        return _to("/signin")
-    return _render(request, "help.html", {"title": "Help", "tab": "settings", "up": "/settings"}, session)
+        return go("/signin")
+    return render(request, "help.html", {"title": "Help", "tab": "settings", "up": "/settings"}, session)
 
 
 @router.get("/about", response_class=HTMLResponse, include_in_schema=False)
 def about_page(request: Request) -> Response:
     """The app, its version, who makes it, and what the phone shares."""
-    session = _session(request)
+    session = session_for(request)
     if session is None:
-        return _to("/signin")
+        return go("/signin")
     context = {"title": "About", "tab": "settings", "up": "/settings", "version": VERSION}
-    return _render(request, "about.html", context, session)
+    return render(request, "about.html", context, session)
 
 
 # ---------------------------------------------------------------------------

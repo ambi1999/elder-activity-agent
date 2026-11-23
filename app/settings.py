@@ -127,6 +127,7 @@ class WebSettings(_Section):
     signin_emails_per_hour: int = Field(ge=1, le=20)
     signin_requests_per_hour_per_ip: int = Field(ge=5, le=500)
     overview_refresh_seconds: int = Field(ge=15, le=600)
+    invite_link_hours: int = Field(ge=1, le=168)
 
     @property
     def session_length(self) -> timedelta:
@@ -137,6 +138,11 @@ class WebSettings(_Section):
     def signin_link_expiry(self) -> timedelta:
         """How long an emailed sign-in link works."""
         return timedelta(minutes=self.signin_link_minutes)
+
+    @property
+    def invite_link_expiry(self) -> timedelta:
+        """How long the sign-in link in an invitation email works."""
+        return timedelta(hours=self.invite_link_hours)
 
 
 class Settings(_Section):

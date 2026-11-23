@@ -57,7 +57,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Fake phone sends data | Per-device random tokens (256 bits), checked by hash; unknown tokens get 401 | ✅ |
 | Lost phone keeps sending | `register_device.py revoke` disables one device without affecting others | ✅ |
 | Token guessed | 256-bit random tokens can't be guessed in practice | ✅ |
-| Photographed setup QR code used to send data | Pending tokens expire unless a first batch arrives within `pairing.pending_token_expiry_minutes` (server setting, default 30, allowed 5 to 1440); the owner sees "Phone connected" and can revoke; QR shown once | ✅ (`scripts/household.py`; web page in step D) |
+| Photographed setup QR code used to send data | Pending tokens expire unless a first batch arrives within `pairing.pending_token_expiry_minutes` (server setting, default 30, allowed 5 to 1440); the owner sees "Phone connected" and can revoke; QR shown once | ✅ (`scripts/household.py`, and the web app's Add a phone page in step D2: shown once, never cached) |
 | Someone signs in as a family member | Email magic links: single-use, 15 minutes, stored as hashes, rate-limited per address and IP; same response for unknown addresses; the link opens a page with a button, so email scanners can't use it up; invite only while testing | ✅ (step D1, ADR 0025) |
 | Stolen session cookie | `Secure`, `HttpOnly`, `SameSite=Lax`, `__Host-` cookie; server-side sessions (only a hash of the id stored) that sign-out ends at once; HTTPS only (HSTS) | ✅ (step D1); owners revoking other members' sessions in step D2 |
 | Fake alerts or sign-in emails (phishing) | Messages never ask for anything; links go only to the service's own domain | ✅ (step C) |
@@ -84,7 +84,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 |---|---|---|
 | Can't tell which device sent data | Every batch is recorded with its device and time; one log line per batch | ✅ |
 | No record of admin actions | Device creation and revocation are timestamped in the database | ✅ |
-| Family member denies changing settings or acknowledging an alert | Acknowledgements record who and when, and every message sent is recorded in `alert_deliveries` (step C ✅); audit log of member actions in the web app | 🟡 (step D) |
+| Family member denies changing settings or acknowledging an alert | Acknowledgements record who and when, and every message sent is recorded in `alert_deliveries` (step C ✅); audit log of member actions in the web app | 🟡 (audit log before real users) |
 
 ### Information disclosure (data leaking)
 
@@ -96,7 +96,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 | Tests wipe or read production data | Tests refuse to run against Neon; separate throwaway database | ✅ |
 | Personal data sent to the LLM or used for training | Only anonymised summaries; Gemini paid tier before real users | 🟡 (ADR 0005) |
 | One household sees another's data | All household data read through one scoped-query module; tests check every route returns 404 for another household's ids; row-level security before real users | ✅ (step D1: `app/access.py`, `tests/test_web_access.py`); row-level security before real users |
-| Former member keeps access | Owners remove members, which revokes their sessions | 🟡 (step D) |
+| Former member keeps access | Owners remove members; access is checked on every request, so removal works from the member's next page (their sessions stay, but see nothing of that household); a household always keeps an owner | ✅ (step D2) |
 | Alerts reveal too much in email or Telegram | Messages say what the rule saw and when, never location or raw data | ✅ (step C, ADR 0026) |
 | Location shown or stored | Phones use the logger's `activity` profile; location readings are ignored and never stored, and `ingest.accepted_sensors` can't include it (tested) | ✅ (ADR 0023; no location view in step D either) |
 | Personal data in LLM prompts | Prompts contain summaries only, no names, emails or chat ids (tested) | ✅ (step C) |
@@ -120,7 +120,7 @@ Status: ✅ implemented · 🟡 planned · ⚪ accepted risk (see section 5)
 |---|---|---|
 | Compromised app gets full database control | Separate least-privilege logins for the app and for migrations | 🟡 (ADR 0015, 0019) |
 | Compromised container gets root | Container runs as a non-root user | ✅ |
-| Viewer changes settings or adds phones | Role checked on the server for every change; viewers get 403 | 🟡 (step D) |
+| Viewer changes settings or adds phones | Role checked on the server for every change; viewers get 403 (tested for each change) | ✅ (step D2) |
 
 ## 5. Accepted risks (for now)
 

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+{# Who gets alerts for this household. Contacts are for the whole household, so they apply to everyone in it. #}
+{% if notice %}<p class="banner green" role="status">{{ notice }}</p>{% endif %}
+<p class="muted small">Alerts about anyone in {{ person.household_name }} go to these contacts.</p>
+{% if contacts %}
+<ul class="list">
+  {% for c in contacts %}
+  <li class="item">
+    <span class="grow"><b>{{ c.display_name }}</b>
+      <small>{{ "Email" if c.channel == "email" else "Telegram" }}{% if c.address and c.channel == "email" %} · {{ c.address }}{% endif %}
+      · {{ "confirmed" if c.confirmed_at else "waiting for them to confirm" }}{% if c.quiet_from %} · quiet {{ c.quiet_from.strftime('%H:%M') }}–{{ c.quiet_to.strftime('%H:%M') }}{% endif %}</small></span>
+    {% if person.is_owner %}
+    <form method="post" action="/people/{{ person.id }}/contacts/{{ c.id }}/remove">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn secondary small-btn" type="submit" aria-label="Remove {{ c.display_name }}">Remove</button>
+    </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}<div class="card empty">No contacts yet, so alerts reach nobody.</div>{% endif %}
+{% if person.is_owner %}
+<h2>Add a contact</h2>
+<form method="post" action="/people/{{ person.id }}/contacts/add" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if error %}<p class="banner red" role="alert">{{ error }}</p>{% endif %}
+  <div class="field"><label for="c-name">Name</label><input id="c-name" name="name" value="{{ form.name }}" maxlength="60" required></div>
+  {% if telegram %}
+  <fieldset class="field"><legend>How should they get alerts?</legend>
+    <label class="choice"><input type="radio" name="channel" value="email" checked> Email</label>
+    <label class="choice"><input type="radio" name="channel" value="telegram"> Telegram</label>
+  </fieldset>
+  {% else %}<input type="hidden" name="channel" value="email">{% endif %}
+  <div class="field"><label for="c-email">Email{% if telegram %} (for email){% endif %}</label><input id="c-email" name="email" type="email" autocomplete="off" value="{{ form.email }}"></div>
+  <button class="btn" type="submit">Add contact</button>
+</form>
+<p class="muted small">They get a link to confirm first; alerts reach them only after that.</p>
+{% else %}<p class="muted small">Only an owner can add or remove contacts.</p>{% endif %}
+{% endblock %}

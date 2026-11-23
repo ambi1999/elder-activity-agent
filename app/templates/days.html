@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icon %}
+{% block content %}
+{# Story D-2: the days the app keeps, newest first, each opening that day by hour. #}
+<ul class="list">
+  {% for label, d in days %}
+  <li><a class="item" href="/people/{{ person.id }}/days/{{ d.day.isoformat() }}">
+    <span class="grow"><b>{{ label }}</b><small>{{ "{:,}".format(d.steps) }} steps · {{ d.active_hours }} active hour{{ "" if d.active_hours == 1 else "s" }}</small></span>
+    {{ icon.chev() }}
+  </a></li>
+  {% endfor %}
+</ul>
+<p class="muted small">The app keeps 7 days of activity.</p>
+{% endblock %}
