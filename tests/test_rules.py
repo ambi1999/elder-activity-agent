@@ -1,4 +1,7 @@
-"""The alert rules, without a database: every case decided exactly (ADR 0026, stories E-1, E-2)."""
+"""The alert rules, without a database: every case decided exactly (ADR 0026, stories E-1, E-2).
+
+Verifies: EA-FR-RUL-001, EA-FR-RUL-002, EA-FR-RUL-003, EA-FR-RUL-004, EA-FR-RUL-005
+"""
 
 from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo

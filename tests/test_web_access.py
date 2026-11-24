@@ -1,4 +1,9 @@
-"""Who sees what in the web app: the set of people, the overview, person pages and alerts (ADR 0028, C3-5, D-5, E-3)."""
+"""Who sees what in the web app: the set of people, the overview, person pages and alerts (ADR 0028, C3-5, D-5, E-3).
+
+Verifies: EA-FR-ACC-001, EA-FR-ACC-002, EA-FR-VIEW-001, EA-FR-VIEW-002, EA-FR-VIEW-003,
+    EA-FR-VIEW-004, EA-FR-VIEW-005, EA-FR-VIEW-006, EA-FR-VIEW-007, EA-FR-VIEW-009, EA-FR-ALR-005,
+    EA-FR-BRD-003, EA-NFR-SEC-003
+"""
 
 import pytest
 from alert_helpers import fakes

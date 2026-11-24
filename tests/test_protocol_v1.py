@@ -1,4 +1,8 @@
-"""Protocol v1 adapter, without a database: envelope checks and item tolerance (ADR 0023)."""
+"""Protocol v1 adapter, without a database: envelope checks and item tolerance (ADR 0023).
+
+Verifies: EA-FR-ING-003, EA-FR-ING-004, EA-FR-ING-006, EA-FR-ING-007, EA-NFR-PRIV-001,
+    EA-NFR-CMP-001
+"""
 
 import json
 from pathlib import Path

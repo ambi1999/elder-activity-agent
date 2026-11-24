@@ -1,4 +1,7 @@
-"""The overview's words and order, and a day's activity by hour (ADR 0028, stories D-1, D-2, D-5)."""
+"""The overview's words and order, and a day's activity by hour (ADR 0028, stories D-1, D-2, D-5).
+
+Verifies: EA-FR-VIEW-001, EA-FR-VIEW-002, EA-FR-VIEW-007
+"""
 
 import uuid
 from dataclasses import replace

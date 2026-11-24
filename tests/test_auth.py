@@ -1,4 +1,7 @@
-"""Users, members, one-time sign-in links and sessions (story C3-1), below the web pages."""
+"""Users, members, one-time sign-in links and sessions (story C3-1), below the web pages.
+
+Verifies: EA-FR-AUTH-001, EA-FR-AUTH-005, EA-FR-AUTH-006, EA-FR-MAN-004, EA-NFR-SEC-002
+"""
 
 from datetime import UTC, datetime, timedelta
 

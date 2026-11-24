@@ -7,6 +7,7 @@ An AI agent that watches phone sensor data (movement, light, charging) for signs
 **Status:** Phase 1 in progress. Phones stream data to the cloud, where it is authenticated per device and stored as per-minute summaries in Postgres.
 
 - [Architecture](docs/architecture.md) (C4 diagrams of the system today)
+- [Requirements (SRS)](docs/requirements/srs.md) and the [traceability matrix](docs/requirements/traceability.md): every requirement linked to its stories and tests
 - [Architecture Decision Records](docs/adr/README.md) (why it's built this way)
 - [Threat model](docs/security/threat-model.md) and [security policy](SECURITY.md)
 
@@ -178,6 +179,6 @@ Full plan: [docs/ROADMAP.md](docs/ROADMAP.md). User stories: [docs/backlog/worki
 - [x] **Step C:** inactivity and phone-silent alerts by Telegram and email (**working prototype**, tried with simulated phone data until logger step B)
 - [x] **Step D1:** web app: email sign-in, access by set of people, care overview, a person's day, alerts with I'm checking, brand from configuration
 - [x] **Step D2:** web app: past days, phones (add by QR), contacts, alert times, members and invitations, add a person
-- [ ] **Backend SRS**, written from what was built
+- [x] **Backend SRS**, written from what was built, with a traceability check in CI
 - [ ] **Phases 2–5:** activity features, personal baseline, agent summaries, evaluation
 - [ ] Before real users: legal review, Australian hosting, least-privilege logins, retention

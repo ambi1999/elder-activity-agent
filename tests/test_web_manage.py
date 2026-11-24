@@ -2,6 +2,10 @@
 
 Owners can change things; viewers can look but get 403 on every change; anything
 outside the user's households is 404.
+
+Verifies: EA-FR-MAN-001, EA-FR-MAN-002, EA-FR-MAN-003, EA-FR-MAN-004, EA-FR-MAN-005, EA-FR-MAN-006,
+    EA-FR-MAN-007, EA-FR-ACC-002, EA-FR-ACC-003, EA-FR-ACC-004, EA-FR-ACC-005, EA-FR-VIEW-008,
+    EA-FR-HH-003, EA-FR-HH-006, EA-NFR-SEC-002
 """
 
 import re

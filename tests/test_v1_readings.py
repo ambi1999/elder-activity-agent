@@ -1,4 +1,8 @@
-"""End-to-end POST /v1/readings tests against a real Postgres database (ADR 0023, story C2b-1)."""
+"""End-to-end POST /v1/readings tests against a real Postgres database (ADR 0023, story C2b-1).
+
+Verifies: EA-FR-ING-001, EA-FR-ING-002, EA-FR-ING-003, EA-FR-ING-004, EA-FR-ING-005, EA-FR-ING-006,
+    EA-FR-ING-007, EA-FR-ING-008, EA-FR-ING-009, EA-NFR-REL-001, EA-NFR-SEC-004
+"""
 
 import json
 from datetime import UTC, datetime, timedelta

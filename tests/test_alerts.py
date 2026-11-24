@@ -1,4 +1,8 @@
-"""The alert lifecycle against a real database (ADR 0026, stories E-1 to E-5)."""
+"""The alert lifecycle against a real database (ADR 0026, stories E-1 to E-5).
+
+Verifies: EA-FR-ALR-002, EA-FR-ALR-003, EA-FR-ALR-004, EA-FR-ALR-005, EA-FR-ALR-006, EA-FR-ALR-007,
+    EA-FR-ALR-008, EA-FR-ALR-009, EA-FR-CON-003, EA-NFR-REL-001
+"""
 
 from datetime import time, timedelta
 
@@ -141,6 +145,26 @@ def test_check_all_checks_everyone_with_an_active_phone(migrated_db):
         migrated_db, NOW, SETTINGS, fakes(), explainer=lambda *a: alerts.explain.Explanation(a[2], "template")
     )
     assert totals == {"people": 2, "opened": 1, "resolved": 0, "sent": 1, "failed": 0}
+
+
+def test_one_persons_failure_doesnt_stop_the_others(migrated_db):
+    make_family(migrated_db, activity=local(9, 5))
+    make_family(migrated_db, activity=local(9, 5))
+    calls = []
+
+    def explainer(*args):
+        # The first person's alert fails part-way; the second must still be alerted.
+        calls.append(args)
+        if len(calls) == 1:
+            raise RuntimeError("something went wrong for this person only")
+        return alerts.explain.Explanation(args[2], "template")
+
+    notifiers = fakes()
+    totals = alerts.check_all(migrated_db, NOW, SETTINGS, notifiers, explainer=explainer)
+    assert totals["people"] == 2
+    assert totals["failed"] == 1
+    assert totals["opened"] == 1
+    assert len(notifiers["email"].sent) == 1
 
 
 def test_alert_settings_default_then_saved(migrated_db):

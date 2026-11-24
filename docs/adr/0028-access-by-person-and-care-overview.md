@@ -36,4 +36,4 @@ Step D builds sign-in, the overview, and person pages on the access set from the
 
 ## When to revisit
 
-When a care organisation wants several staff to share people, or alerts for many people become too noisy for one person (digests, assignment).
+When a care organisation wants several staff to share people, or alerts for many people become too noisy for one person (digests, assignment). The care-team use case (nurses in shifts sharing a group of households, the family granting access) is recorded as Proposed requirements EA-FR-TEAM-001 to 006 in the [SRS](../requirements/srs.md#315-care-organisations-l).

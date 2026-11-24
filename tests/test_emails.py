@@ -1,4 +1,7 @@
-"""The email address check used by sign-in, invitations and contacts."""
+"""The email address check used by sign-in, invitations and contacts.
+
+Verifies: EA-NFR-SEC-006
+"""
 
 import time
 

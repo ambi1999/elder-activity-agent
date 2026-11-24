@@ -1,4 +1,7 @@
-"""Settings: defaults load, wrong values stop the app with the setting's name (story A-1)."""
+"""Settings: defaults load, wrong values stop the app with the setting's name (story A-1).
+
+Verifies: EA-FR-OPS-001, EA-FR-OPS-002
+"""
 
 from datetime import timedelta
 from pathlib import Path

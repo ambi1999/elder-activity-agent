@@ -1,4 +1,7 @@
-"""Request limits: uploads per device (ADR 0020) and sign-in requests (ADR 0025), without a database."""
+"""Request limits: uploads per device (ADR 0020) and sign-in requests (ADR 0025), without a database.
+
+Verifies: EA-FR-ING-008, EA-FR-AUTH-004
+"""
 
 from datetime import UTC, datetime, timedelta
 

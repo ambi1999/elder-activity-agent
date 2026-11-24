@@ -1,4 +1,7 @@
-"""Households, people and adding phones (ADR 0024, story A-2), against a real database."""
+"""Households, people and adding phones (ADR 0024, story A-2), against a real database.
+
+Verifies: EA-FR-HH-001, EA-FR-HH-002, EA-FR-HH-003, EA-FR-HH-004, EA-FR-HH-005, EA-FR-HH-006
+"""
 
 import uuid
 from datetime import UTC, datetime, timedelta

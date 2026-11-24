@@ -1,4 +1,7 @@
-"""Telegram and email notifiers, with HTTP replaced by a fake transport (nothing is really sent)."""
+"""Telegram and email notifiers, with HTTP replaced by a fake transport (nothing is really sent).
+
+Verifies: EA-FR-CON-006
+"""
 
 import json
 
