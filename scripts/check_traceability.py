@@ -38,7 +38,7 @@ TESTS = ROOT / "tests"
 ID = r"EA-(?:FR|NFR)-[A-Z]+-\d{3}"
 HEADING = re.compile(rf"^#### ({ID}) (.+)$")
 DETAILS = re.compile(
-    r"^Priority: (Must|Should|Could|Won't) \| Release: (W1|P\d|L) \| Stories: ([^|]+) \| "
+    r"^Priority: (Must|Should|Could|Won't) \| Release: (W1|P\d|B|L) \| Stories: ([^|]+) \| "
     r"Verification: ([TDIA, ]+) \| Status: (Proposed|Approved|Implemented|Verified)$"
 )
 STORY = re.compile(r"^### ([A-Z][A-Za-z0-9]*-\d+) ")
