@@ -1,4 +1,8 @@
-"""Signing in to the web app by email link, sessions, signing out and form protection (story C3-1, ADR 0025)."""
+"""Signing in to the web app by email link, sessions, signing out and form protection (story C3-1, ADR 0025).
+
+Verifies: EA-FR-AUTH-001, EA-FR-AUTH-002, EA-FR-AUTH-003, EA-FR-AUTH-004, EA-FR-AUTH-005,
+    EA-FR-AUTH-006, EA-FR-AUTH-007, EA-FR-AUTH-008, EA-NFR-SEC-003
+"""
 
 from datetime import UTC, datetime, timedelta
 

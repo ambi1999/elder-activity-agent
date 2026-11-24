@@ -2,6 +2,8 @@
 
 examples/manifest.json says what a conforming receiver must do with each file:
 accept it (HTTP 200) or reject it (HTTP 422, as Problem Details).
+
+Verifies: EA-NFR-CMP-001
 """
 
 import json

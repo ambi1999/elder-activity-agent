@@ -1,4 +1,7 @@
-"""The LLM explanation and its template fallback (story E-4): the alert never depends on the LLM."""
+"""The LLM explanation and its template fallback (story E-4): the alert never depends on the LLM.
+
+Verifies: EA-FR-EXP-001, EA-FR-EXP-002, EA-NFR-REL-002, EA-NFR-PRIV-002
+"""
 
 from datetime import UTC, datetime
 

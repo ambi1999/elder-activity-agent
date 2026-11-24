@@ -1,4 +1,7 @@
-"""The brand comes from config/brand.toml and its colours pass WCAG 2.2 AA contrast (story D-4)."""
+"""The brand comes from config/brand.toml and its colours pass WCAG 2.2 AA contrast (story D-4).
+
+Verifies: EA-FR-BRD-001, EA-FR-BRD-002
+"""
 
 from pathlib import Path
 

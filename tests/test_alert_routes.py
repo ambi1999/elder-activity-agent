@@ -1,4 +1,7 @@
-"""Alert routes: the scheduled check, the Telegram webhook and the email pages (ADR 0026)."""
+"""Alert routes: the scheduled check, the Telegram webhook and the email pages (ADR 0026).
+
+Verifies: EA-FR-ALR-001, EA-FR-ALR-005, EA-FR-CON-002, EA-FR-CON-005
+"""
 
 import uuid
 from datetime import UTC, datetime, timedelta

@@ -1,4 +1,7 @@
-"""Alert contacts: adding, confirming by one-time link, quiet hours (stories C-1, D-3)."""
+"""Alert contacts: adding, confirming by one-time link, quiet hours (stories C-1, D-3).
+
+Verifies: EA-FR-CON-001, EA-FR-CON-002, EA-FR-CON-003, EA-FR-CON-004
+"""
 
 from datetime import time, timedelta
 

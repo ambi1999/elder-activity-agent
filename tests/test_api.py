@@ -1,4 +1,7 @@
-"""API tests that don't need a database."""
+"""API tests that don't need a database.
+
+Verifies: EA-FR-OPS-003, EA-NFR-SEC-004
+"""
 
 from fastapi.testclient import TestClient
 
