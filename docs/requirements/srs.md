@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Document version** | 1.0 |
-| **Status** | Working version (W1) implemented; Phases 2 to 5 and care teams are a baseline that will be refined |
+| **Document version** | 1.1 |
+| **Status** | Working version (W1) implemented; Phases 2 to 5, billing and reviews, and care teams are a baseline that will be refined |
 | **Date** | 2026-11-24 |
 | **Owner** | Ambi |
 | **Structure** | Based on ISO/IEC/IEEE 29148:2018, tailored for an agile project; the same conventions as phone-sensor-logger's SRS |
@@ -20,7 +20,8 @@ elder-activity-agent is a server and web app that:
 
 - receives activity data from phones running phone-sensor-logger (protocol v1);
 - decides with fixed rules when a person may need checking on, and alerts their family or carers by email or Telegram, with a plain-words explanation;
-- gives families and nurses a web app to see who needs attention, each person's day, and to manage phones, contacts, alert times and members.
+- gives families and nurses a web app to see who needs attention, each person's day, and to manage phones, contacts, alert times and members;
+- later, charges families a subscription paid on the website, and collects families' reviews that they allow to be shown (release B); care providers pay later still (release L).
 
 Out of scope: medical diagnosis or advice, emergency response, location tracking, and the phone app itself (phone-sensor-logger has its own SRS). The service is a wellness aid, not a medical device (ADR 0002).
 
@@ -31,20 +32,24 @@ Out of scope: medical diagnosis or advice, emergency response, location tracking
 | Activity | Steps increasing, the screen turning on or off, or the phone detecting walking, running or cycling |
 | Alert | A record that a rule found something; it is open, acknowledged or resolved |
 | Alert contact | Someone who receives alerts for a household by email or Telegram, after confirming |
+| Billing account | Who pays: a family (usually for one household) or, later, a care provider (for many). Each household belongs to one billing account (ADR 0030) |
 | Batch | One upload of readings and summaries from a phone, defined by protocol v1 |
 | Care overview | The page listing everyone a user looks after, needs attention first (ADR 0028) |
 | Household | The unit of sharing: one or more people, their phones, contacts and members |
 | Member | A user with access to a household, as **owner** (may change things) or **viewer** (may look and acknowledge) |
 | Person | Someone being looked after. They carry the phone and never sign in. |
+| Plan | What a billing account pays for and what its households can use; plans and prices are settings |
 | Phone, device | A phone paired with a person; **pending** until its first upload, then **active**, or **revoked** when removed |
+| Review | A member's star rating and comment about the service, with their choices about where it may be shown |
 | Rule | A deterministic check that decides when to alert (ADR 0026) |
 | User | Someone who signs in to the web app: a family member or a nurse |
+| Trial | The free period a new household gets before a subscription is needed |
 | Waking hours | The local times between which no-activity alerts may be raised for a person |
 
 ### 1.4 References
 
 - Architecture: [`docs/architecture.md`](../architecture.md) (C4 diagrams, data model, sequences)
-- Decisions: [`docs/adr/`](../adr/README.md), especially ADR 0002 (wellness, not medical), 0011 (per-device tokens), 0020 (rate limits), 0022 (data minimisation), 0023 (protocol v1), 0024 (households and pairing), 0025 (web app), 0026 (rules decide, the LLM explains), 0028 (access by person and care overview)
+- Decisions: [`docs/adr/`](../adr/README.md), especially ADR 0002 (wellness, not medical), 0011 (per-device tokens), 0020 (rate limits), 0022 (data minimisation), 0023 (protocol v1), 0024 (households and pairing), 0025 (web app), 0026 (rules decide, the LLM explains), 0028 (access by person and care overview), 0030 (billing accounts and payment on the web)
 - Stories: [`docs/backlog/working-version.md`](../backlog/working-version.md)
 - Protocol: [`protocol/phone-sensor-logger-v1/v1.md`](../../protocol/phone-sensor-logger-v1/v1.md)
 - Security: [`docs/security/threat-model.md`](../security/threat-model.md)
@@ -56,7 +61,7 @@ Out of scope: medical diagnosis or advice, emergency response, location tracking
 
 - **Requirement IDs** have the form `EA-<kind>-<area>-<number>`: `FR` for functional, `NFR` for non-functional. IDs are never reused, even when a requirement is deleted.
 - **"shall"** marks a mandatory statement. Requirements follow EARS patterns: *always* ("The service shall"), *event* ("When"), *state* ("While"), *unwanted behaviour* ("If ... then") and *optional feature* ("Where").
-- **Priority** uses MoSCoW. **Release** is W1 (the working version, steps A to D), P2 to P5 (Phases 2 to 5) or L (later: care organisations); see section 6.
+- **Priority** uses MoSCoW. **Release** is W1 (the working version, steps A to D), P2 to P5 (Phases 2 to 5), B (billing and reviews, families) or L (later: care organisations, including provider billing); see section 6.
 - **Stories** names the backlog stories that build a requirement; `-` means none yet.
 - **Verification**: T = test, D = demonstration, I = inspection, A = analysis.
 - **Status**: Proposed, Approved, Implemented, Verified.
@@ -88,17 +93,18 @@ The service is one of two products. phone-sensor-logger is a generic Android app
 - Let users sign in by email link (3.8) and see exactly the people they look after (3.9): the care overview and each person's day (3.10).
 - Let owners manage phones, alert times, contacts, members and people (3.11), under the configured brand (3.12).
 - Be operable from configuration and the command line (3.13).
-- Later: daily features, a personal baseline, summaries and questions (3.14), and care teams (3.15).
+- Later: daily features, a personal baseline, summaries and questions (3.14), care teams (3.15), billing (3.16) and reviews (3.17).
 
 ### 2.3 User classes
 
 | Class | Who | Uses | Frequency |
 |---|---|---|---|
 | Person | The older person carrying the phone | Nothing in this service; the phone uploads | Continuous |
-| Owner | A family member who manages a household | Web app: everything for their households | Daily to weekly |
+| Owner | A family member who manages a household | Web app: everything for their households, and paying for them (release B) | Daily to weekly |
 | Viewer | Another family member or a carer | Web app: looks and acknowledges | When alerted, or daily |
 | Nurse | Looks after several people in several households (ADR 0028) | Web app: the care overview first | Every shift |
 | Alert contact | Anyone told about alerts, often also a member | Email or Telegram | When alerted |
+| Provider billing admin | Someone at a care provider who manages its bill (release L) | Web app: billing only; seeing people needs care team access (3.15) | Monthly |
 | Developer | Builds and runs the service | Command line, CI, hosting | As needed |
 
 ### 2.4 Operating environment
@@ -113,7 +119,9 @@ The service is one of two products. phone-sensor-logger is a generic Android app
 - Free tiers only while testing (Render, Neon, Resend, Gemini, GitHub Actions on a public repository).
 - No secrets in the repository, logs, screenshots or documentation; secrets come from environment variables only.
 - Health information is "sensitive information" under Australia's Privacy Act; data is minimised (ADR 0022) and legal advice is needed before professional use (ADR 0028).
-- The service is not a medical device and not an emergency service, and says so (ADR 0002).
+- The service is not a medical device and not an emergency service, and says so (ADR 0002). Marketing and plan descriptions use the same wording.
+- Before taking real payments: an ABN, GST registration once required, terms, a privacy policy and a refund policy, and the wording checked by a lawyer (section 6). Card payments are handled only by Stripe (ADR 0030).
+- Reviews follow Australian Consumer Law and Google Play's rules: genuine, never rewarded, and never removed for being negative (3.17).
 
 ### 2.6 Assumptions and dependencies
 
@@ -763,7 +771,150 @@ Priority: Could | Release: L | Stories: - | Verification: D | Status: Proposed
 
 The web app shall let nurses leave a note on a person for the next shift.
 
-### 3.16 Data requirements
+### 3.16 Billing (BIL)
+
+These requirements record the decision of 2026-11-24 to charge **families** first, by a subscription paid on the website, and **care providers** later, once families have written reviews. They are **Proposed**: families are billed in release B, after Phase 5's test with a real family; providers in release L, with care teams. Payment is taken by Stripe's hosted pages; the phone app sells nothing (ADR 0030).
+
+```mermaid
+flowchart LR
+    fam["Billing account<br/>family"] -- pays for --> h1["Household<br/>Mum"]
+    prov["Billing account<br/>provider (release L)"] -- "pays for, per household" --> h2["Household A"]
+    prov --> h3["Household B"]
+    acct(["Subscription<br/>plan, state, period"]) -.- fam
+    acct2(["Subscription<br/>plan, quantity"]) -.- prov
+```
+
+#### EA-FR-BIL-001 Every household has a billing account
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+The service shall link each household to exactly one billing account; a new household shall get a family billing account of its own unless an owner adds it to one they already pay for.
+
+#### EA-FR-BIL-002 Free trial
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+When a household is created, the service shall give it a free trial of `billing.trial_days` (30 days) without asking for payment details.
+
+#### EA-FR-BIL-003 Pay on the website, through Stripe
+
+Priority: Must | Release: B | Stories: - | Verification: T, I | Status: Proposed
+
+The web app shall let an owner start, change and cancel a subscription only through Stripe's hosted checkout and billing portal; the phone app shall offer nothing to buy.
+
+#### EA-FR-BIL-004 Only owners see billing
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+The service shall show and change a family billing account only for owners of the households it pays for; anyone else shall get "not found" (EA-FR-ACC-002).
+
+#### EA-FR-BIL-005 Payment state comes only from Stripe
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+The service shall change a subscription's state only from Stripe webhook events whose signature is valid (EA-NFR-SEC-008); returning from the checkout page shall not by itself mark anything as paid.
+
+#### EA-FR-BIL-006 Each event once
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+When Stripe sends the same event more than once, or events out of order, the service shall apply each event once and end in the state Stripe reports for the subscription.
+
+#### EA-FR-BIL-007 One place decides what a plan allows
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+The service shall decide what a household may use (for example how many people, phones and members) in one function, from its billing account's plan and state, like access is decided in `app/access.py`.
+
+#### EA-FR-BIL-008 Alerts never stop without warning
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+If a trial ends unpaid or a payment fails, then the service shall keep sending alerts for `billing.grace_days` (14 days), email the owners at the start and `billing.grace_warning_days` (3 days) before alerts stop, and afterwards keep the household's data with its pages read-only; nothing shall be deleted for not paying.
+
+#### EA-FR-BIL-009 Plans and prices from settings
+
+Priority: Should | Release: B | Stories: - | Verification: I | Status: Proposed
+
+The service shall read plan names and limits from `config/settings.toml` and Stripe price IDs from the environment, so prices change without code changes.
+
+#### EA-FR-BIL-010 Cancel at any time
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+When an owner cancels, the subscription shall continue to the end of the paid period, and the web app shall say clearly when it ends and what happens then.
+
+#### EA-FR-BIL-011 Provider accounts, priced per household
+
+Priority: Should | Release: L | Stories: - | Verification: T | Status: Proposed
+
+The service shall let a care provider's billing account pay for many households, with the subscription quantity kept equal to the number of households it pays for.
+
+#### EA-FR-BIL-012 A provider takes over paying
+
+Priority: Should | Release: L | Stories: - | Verification: T | Status: Proposed
+
+When an owner agrees to a care provider paying for their household, the service shall move the household to the provider's billing account in one step and end the family's subscription with a pro-rata credit, so no period is paid twice.
+
+#### EA-FR-BIL-013 Invoices for providers
+
+Priority: Could | Release: L | Stories: - | Verification: D | Status: Proposed
+
+Where a care provider chooses, the service shall bill it by invoice paid by bank transfer.
+
+#### EA-FR-BIL-014 Paying doesn't give access
+
+Priority: Must | Release: L | Stories: - | Verification: T | Status: Proposed
+
+The service shall let a provider's billing admins manage only its bill; seeing people shall still need care team access granted by each household's owner (EA-FR-TEAM-002).
+
+### 3.17 Reviews (REV)
+
+Families' reviews will be shown to care providers (release L) and possibly publicly. They are **Proposed** for release B, so genuine reviews have built up before providers are approached. Families are also invited to leave independent reviews on public review sites; that needs no code.
+
+#### EA-FR-REV-001 Leave a review
+
+Priority: Should | Release: B | Stories: - | Verification: T | Status: Proposed
+
+The web app shall let each member leave one review per household: a rating from 1 to 5 stars and an optional comment of up to `reviews.max_comment_chars` (1,000) characters.
+
+#### EA-FR-REV-002 Everyone is asked, once
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+When a member has used the web app for `reviews.ask_after_days` (30 days), the web app shall ask them once for a review; who is asked shall not depend on alerts, ratings or anything suggesting whether they are happy.
+
+#### EA-FR-REV-003 Permission to show, given separately
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+The web app shall ask separately whether a review may be shown to care providers and whether it may be shown publicly, both "no" until the member chooses, and how they are named: first name and suburb, "a family in" a town, or anonymous.
+
+#### EA-FR-REV-004 Change or withdraw at any time
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+When a member changes or withdraws a review or a permission, the service shall show the review according to the change from the next request.
+
+#### EA-FR-REV-005 Genuine reviews are never edited or quietly removed
+
+Priority: Must | Release: B | Stories: - | Verification: T, I | Status: Proposed
+
+The service shall not let anyone but the member edit a review; the developer shall be able only to hide a review that is fake or abusive, and the service shall record who hid it, when and why.
+
+#### EA-FR-REV-006 An honest summary
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+Where reviews are shown to care providers or publicly, the service shall show only reviews with that permission, together with the total number of reviews and the average rating of all reviews that aren't hidden under EA-FR-REV-005.
+
+#### EA-FR-REV-007 No rewards for reviews
+
+Priority: Must | Release: B | Stories: - | Verification: I | Status: Proposed
+
+The service shall offer nothing of value, such as a discount or a longer trial, in return for a review.
+
+### 3.18 Data requirements
 
 | Data | Kept | Where defined |
 |---|---|---|
@@ -771,6 +922,8 @@ The web app shall let nurses leave a note on a person for the next shift.
 | Households, people, phones (token hashes only) | Until removed | `0002_*`, ADR 0024 |
 | Alerts, deliveries, contacts, alert settings | Until the household is deleted | `0003_*`, ADR 0026 |
 | Users, members, sign-in links and sessions (hashes only) | Until removed; links and sessions until they expire | `0004_*`, ADR 0025 |
+| Billing accounts, subscriptions (Stripe IDs, plan, state; never card details), Stripe event IDs (release B) | Billing records as long as tax law requires; event IDs for `billing.event_days` (30 days) | A later migration, ADR 0030 |
+| Reviews and permissions, with the time each was given (release B) | Until the member deletes the review or their account | A later migration |
 
 Location is never stored (EA-FR-ING-006). The data model diagram is in [architecture section 9.6](../architecture.md#96-target-data-model).
 
@@ -848,6 +1001,18 @@ Priority: Must | Release: W1 | Stories: C3-1 | Verification: T | Status: Impleme
 
 Checks on text typed into the web app shall take time proportional to its length, whatever is typed.
 
+#### EA-NFR-SEC-007 No card details
+
+Priority: Must | Release: B | Stories: - | Verification: I, T | Status: Proposed
+
+The service shall never receive, log or store card details; it shall keep only Stripe's customer and subscription IDs and what Stripe reports about the subscription.
+
+#### EA-NFR-SEC-008 Billing webhooks are checked
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+The service shall refuse a Stripe webhook request whose signature doesn't match `STRIPE_WEBHOOK_SECRET` or whose timestamp is more than `billing.webhook_tolerance_seconds` (300 seconds) old, and shall log refusals without the request body; `STRIPE_SECRET_KEY` shall come from the environment only (EA-NFR-SEC-001).
+
 ### 4.4 Privacy (PRIV)
 
 #### EA-NFR-PRIV-001 Minimal data
@@ -867,6 +1032,12 @@ The service shall send the LLM only activity summaries: no names, contact detail
 Priority: Must | Release: W1 | Stories: D-1 | Verification: I | Status: Implemented
 
 The web app shall say that the service is a wellness aid, not a medical device or an emergency service, and to call 000 in an emergency.
+
+#### EA-NFR-PRIV-004 Reviews shown only with permission
+
+Priority: Must | Release: B | Stories: - | Verification: T | Status: Proposed
+
+The service shall record when each review permission was given or withdrawn, and shall show no review, name or suburb anywhere without the matching permission (EA-FR-REV-003).
 
 ### 4.5 Usability and accessibility (USE)
 
@@ -922,6 +1093,12 @@ Priority: Must | Release: W1 | Stories: - | Verification: I | Status: Implemente
 
 While testing, the service shall run on free plans only: Render, Neon, Resend, Gemini and GitHub Actions.
 
+#### EA-NFR-CST-002 Stripe in test mode until going live
+
+Priority: Must | Release: B | Stories: - | Verification: I | Status: Proposed
+
+The service shall use Stripe's test mode, which costs nothing, until the business setup in section 2.5 is done; switching to live mode shall need only a change of environment variables.
+
 ### 4.8 Compatibility (CMP)
 
 #### EA-NFR-CMP-001 Protocol v1 compatibility
@@ -945,6 +1122,8 @@ Server-rendered pages, designed in [`docs/design.md`](../design.md) and tried as
 | Alert times, contacts, members | `/people/{id}/alert-times`, `/contacts`, `/members` | MAN-002 to 005 |
 | Alerts, one alert | `/alerts`, `/alerts/{id}` | ALR-005, EXP-003 |
 | Settings, profile, add a person, help, about | `/settings`, `/profile`, `/people/add`, `/help`, `/about` | MAN-006, MAN-007, PRIV-003 |
+| Billing (release B) | `/billing` | BIL-001 to 010 |
+| Reviews (release B) | `/reviews` | REV-001 to 004 |
 
 ### 5.2 Software interfaces
 
@@ -957,6 +1136,8 @@ Server-rendered pages, designed in [`docs/design.md`](../design.md) and tried as
 | Resend API | Service → Resend | HTTPS JSON | `RESEND_API_KEY` |
 | Telegram Bot API | Service → Telegram | HTTPS JSON | `TELEGRAM_BOT_TOKEN` |
 | Gemini API | Service → Google | HTTPS | `GEMINI_API_KEY` |
+| Stripe API: checkout, billing portal (release B) | Service → Stripe | HTTPS JSON | `STRIPE_SECRET_KEY` |
+| `POST /stripe/webhook` (release B) | Stripe → service | Stripe events | Signature with `STRIPE_WEBHOOK_SECRET` |
 | PostgreSQL | Service → Neon | TLS | `DATABASE_URL` |
 
 ### 5.3 Communication
@@ -972,7 +1153,8 @@ All traffic is HTTPS. Times on the wire are UTC; pages and messages show the per
 | **P3** | Personal baseline and rules from it | Proposed |
 | **P4** | Daily summaries; questions about the day | Proposed |
 | **P5** | Scenario testing, monitoring, retention, verified email domain, audit log, automated accessibility checks, test with a real family | Proposed |
-| **L** | Care organisations and care teams (section 3.15) | Proposed |
+| **B** | Billing for families: a trial, then a subscription paid on the website with Stripe (section 3.16), in test mode until the business setup is done; family reviews (3.17) | Proposed |
+| **L** | Care organisations and care teams (section 3.15), and care providers paying per household (3.16) | Proposed |
 
 ## 7. Traceability
 
@@ -983,3 +1165,4 @@ All traffic is HTTPS. Times on the wire are UTC; pages and messages show the per
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-11-24 | First version: the working version (W1) as built in steps A to D; Phases 2 to 5 and care teams as Proposed |
+| 1.1 | 2026-11-24 | Billing (3.16) and reviews (3.17) added as Proposed: families pay first (release B), care providers later (release L); billing accounts and Stripe decided in ADR 0030; release B added |

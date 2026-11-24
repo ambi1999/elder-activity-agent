@@ -41,6 +41,7 @@ This folder records the significant design decisions for the Elder Activity Agen
 | [0026](0026-rules-decide-llm-explains.md) | Let rules decide when to alert, let the LLM explain, and send alerts by email and Telegram | Accepted (built in step C; email through Resend) |
 | [0027](0027-python-version-policy.md) | Run one Python version everywhere, and upgrade it deliberately | Accepted |
 | [0028](0028-access-by-person-and-care-overview.md) | Give each signed-in user a set of people, with a care overview first | Accepted (to be built in step D) |
+| [0030](0030-billing-accounts-and-payment-on-the-web.md) | Bill through billing accounts, and take payment on the website with Stripe | Accepted (planned for release B; provider billing in release L) |
 
 ## Template for new records
 

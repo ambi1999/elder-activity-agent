@@ -27,7 +27,8 @@ flowchart LR
 | Phase 3 | agent | Personal baseline; new rules with scenario tests | | |
 | Phase 4 | agent | Daily summaries; family members ask questions about the day | | 0004, 0005, 0017 |
 | Phase 5 | both | Scenario testing of alerts, monitoring, retention jobs, test distribution to a family | | 0029 |
-| Care organisations | agent | Several staff sharing people, assigning people to staff, shift handover, alert digests, audit reports | | |
+| Billing and reviews (B) | agent | Families pay after a free trial, on the website with Stripe (test mode first); alerts keep working through a grace period; family reviews with permission to show them. Two pull requests for billing (plans and trial, then Stripe), one for reviews. Live payments after the business setup | Families can pay | 0030 |
+| Care organisations | agent | Several staff sharing people, assigning people to staff, shift handover, alert digests, audit reports; care providers paying per household | | 0030 |
 | Before real users | agent | Legal review, privacy policy, Australian region, least-privilege database logins, row-level security | | 0019, 0022 |
 
 **Order (changed 2026-11-23):** all agent work first (A, C, D, then the SRS), then logger step B, then Phases 2–5. Alerts are tried before the logger app exists with `scripts/simulate_phone.py`, which sends protocol v1 batches with a real device token; the first end-to-end test with a real phone follows step B.
